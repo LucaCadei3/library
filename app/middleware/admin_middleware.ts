@@ -1,17 +1,15 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
+import type User from '#models/user'
 
 export default class AdminMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {
-    /**
-     * Middleware logic goes here (before the next call)
-     */
-    console.log(ctx)
+    const user = ctx.auth.user as unknown as User | undefined
 
-    /**
-     * Call next method in the pipeline and return its output
-     */
-    const output = await next()
-    return output
+    if (!user || user.role !== 'admin') {
+      return ctx.response.forbidden({ error: 'Admin access required' })
+    }
+
+    return next()
   }
 }
