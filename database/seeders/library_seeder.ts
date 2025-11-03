@@ -4,9 +4,9 @@ import Author from '../../app/models/author.js'
 import Book from '../../app/models/book.js'
 
 export default class LibrarySeeder extends BaseSeeder {
-  public async run () {
-    // 1️⃣ Creazione autori
-    const authors = await Author.createMany([
+  public async run() {
+    // 1️⃣ Autori: upsert by name (idempotente)
+    const authorSeeds = [
       { id: 1, name: 'Jane Austen' },
       { id: 2, name: 'George Orwell' },
       { id: 3, name: 'F. Scott Fitzgerald' },
@@ -27,10 +27,16 @@ export default class LibrarySeeder extends BaseSeeder {
       { id: 18, name: 'Victor Hugo' },
       { id: 19, name: 'Mary Shelley' },
       { id: 20, name: 'Ernest Hemingway' },
-    ])
+    ]
 
-    // 2️⃣ Creazione libri (50 libri reali)
-    await Book.createMany([
+    const authorIdMap = new Map<number, number>()
+    for (const seed of authorSeeds) {
+      const author = await Author.updateOrCreate({ name: seed.name }, { name: seed.name })
+      authorIdMap.set(seed.id, author.id)
+    }
+
+    // 2️⃣ Libri: upsert by ISBN (idempotente). Gli ID autore vengono mappati.
+    const bookSeeds = [
       { title: 'Pride and Prejudice', isbn: '9780141439518', author_id: 1, year: 1813, available: true },
       { title: 'Sense and Sensibility', isbn: '9780141439662', author_id: 1, year: 1811, available: true },
       { title: '1984', isbn: '9780451524935', author_id: 2, year: 1949, available: true },
@@ -82,6 +88,21 @@ export default class LibrarySeeder extends BaseSeeder {
       { title: 'A Moveable Feast', isbn: '9780684803050', author_id: 20, year: 1964, available: true },
       { title: 'Across the River and Into the Trees', isbn: '9780684802954', author_id: 20, year: 1950, available: true },
       { title: 'Islands in the Stream', isbn: '9780684803807', author_id: 20, year: 1970, available: true },
-    ])
+    ]
+
+    for (const book of bookSeeds) {
+      const mappedAuthorId = authorIdMap.get(book.author_id)
+      if (!mappedAuthorId) continue
+      await Book.updateOrCreate(
+        { isbn: book.isbn },
+        {
+          title: book.title,
+          isbn: book.isbn,
+          author_id: mappedAuthorId,
+          year: book.year,
+          available: book.available,
+        }
+      )
+    }
   }
 }
