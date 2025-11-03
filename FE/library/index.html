@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📚 Biblioteca Online</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>📚 Biblioteca</h1>
+    <div class="filters">
+      <input type="text" id="filter-title" placeholder="🔍 Cerca per titolo...">
+      <input type="text" id="filter-author" placeholder="👤 Cerca per autore...">
+      <button id="reset">🔄 Reset</button>
+    </div>
+  </header>
+
+  <main>
+    <table id="books-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Titolo</th>
+          <th>Autore</th>
+          <th>Anno</th>
+          <th>ISBN</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="5" class="loading">Caricamento...</td></tr>
+      </tbody>
+    </table>
+
+    <div id="pagination">
+      <button id="prev">⬅️ Precedente</button>
+      <span id="page-info"></span>
+      <button id="next">Avanti ➡️</button>
+    </div>
+  </main>
+
+  <footer>
+    <p>Lavoro svolto da: Edoardo Spinelli, Rodari Filippo, Luca Cadei e Nicholas Martorelli</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
