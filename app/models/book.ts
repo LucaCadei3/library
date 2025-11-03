@@ -13,8 +13,8 @@ export default class Book extends BaseModel {
   @column()
   declare isbn: string
 
-  @column()
-  declare author_id: number
+  @column({ columnName: 'author_id' })
+  declare authorId: number
 
   @column()
   declare year: number

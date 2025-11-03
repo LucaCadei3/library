@@ -98,7 +98,7 @@ export default class LibrarySeeder extends BaseSeeder {
         {
           title: book.title,
           isbn: book.isbn,
-          author_id: mappedAuthorId,
+          authorId: mappedAuthorId,
           year: book.year,
           available: book.available,
         }

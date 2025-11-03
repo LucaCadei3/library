@@ -8,11 +8,11 @@ export default class Loan extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
-  @column()
-  declare user_id: number
+  @column({ columnName: 'user_id' })
+  declare userId: number
 
-  @column()
-  declare book_id: number
+  @column({ columnName: 'book_id' })
+  declare bookId: number
 
   @column.date()
   declare loan_date: DateTime

@@ -20,7 +20,7 @@ router.group(() => {
   router.delete('authors/:id', '#controllers/authors_controller.destroy').use(middleware.admin())
 
   // CRUD Books
-  router.get('books', '#controllers/books_controller.index')
+
   router.get('books/:id', '#controllers/books_controller.show')
   router.post('books', '#controllers/books_controller.store').use(middleware.admin())
   router.put('books/:id', '#controllers/books_controller.update').use(middleware.admin())
@@ -33,3 +33,4 @@ router.group(() => {
   router.put('loans/:id', '#controllers/loans_controller.update')
   router.delete('loans/:id', '#controllers/loans_controller.destroy')
 }).use(middleware.auth())
+  router.get('books', '#controllers/books_controller.index')

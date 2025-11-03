@@ -1,10 +1,18 @@
+import Book from '#models/book'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class BooksController {
   /**
    * Display a list of resource
    */
-  async index({}: HttpContext) {}
+  async index({ request }: HttpContext) {
+    const pageInput = Number(request.input('page', 1))
+    const page = Number.isFinite(pageInput) && pageInput > 0 ? pageInput : 1
+    const perPage = 25
+
+    const paginator = await Book.query().preload('author').paginate(page, perPage)
+    return paginator.toJSON()
+  }
 
   /**
    * Display form to create a new record
