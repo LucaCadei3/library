@@ -2,45 +2,56 @@ import Book from '#models/book'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class BooksController {
-  /**
-   * Display a list of resource
-   */
   async index({ request }: HttpContext) {
-    const pageInput = Number(request.input('page', 1))
-    const page = Number.isFinite(pageInput) && pageInput > 0 ? pageInput : 1
-    const perPage = 25
+    const page = request.input('page', 1)
+    const perPage = request.input('per_page', 25)
+    const search = request.input('search', '')
+    const authorId = request.input('author_id')
 
-    const paginator = await Book.query().preload('author').paginate(page, perPage)
-    return paginator.toJSON()
+    const query = Book.query().preload('author')
+
+    if (search) {
+      query.where('title', 'like', `%${search}%`)
+        .orWhere('isbn', 'like', `%${search}%`)
+    }
+
+    if (authorId) {
+      query.where('author_id', authorId)
+    }
+
+    const books = await query.paginate(page, perPage)
+    return books.toJSON()
   }
 
-  /**
-   * Display form to create a new record
-   */
-  async create({}: HttpContext) {}
+  async show({ params }: HttpContext) {
+    const book = await Book.query()
+      .where('id', params.id)
+      .preload('author')
+      .preload('loans')
+      .firstOrFail()
+    return book
+  }
 
-  /**
-   * Handle form submission for the create action
-   */
-  async store({}: HttpContext) {}
+  async store({ request }: HttpContext) {
+    // Implementare validazione (vedi punto 5)
+    const data = request.only(['title', 'isbn', 'author_id', 'year', 'available'])
+    const book = await Book.create(data)
+    await book.load('author')
+    return book
+  }
 
-  /**
-   * Show individual record
-   */
-  async show({}: HttpContext) {}
+  async update({ params, request }: HttpContext) {
+    const book = await Book.findOrFail(params.id)
+    const data = request.only(['title', 'isbn', 'author_id', 'year', 'available'])
+    book.merge(data)
+    await book.save()
+    await book.load('author')
+    return book
+  }
 
-  /**
-   * Edit individual record
-   */
-  async edit({}: HttpContext) {}
-
-  /**
-   * Handle form submission for the edit action
-   */
-  async update({}: HttpContext) {}
-
-  /**
-   * Delete record
-   */
-  async destroy({}: HttpContext) {}
+  async destroy({ params, response }: HttpContext) {
+    const book = await Book.findOrFail(params.id)
+    await book.delete()
+    return response.noContent()
+  }
 }

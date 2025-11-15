@@ -7,16 +7,85 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Header con login/logout -->
   <header>
-    <h1>📚 Biblioteca</h1>
-    <div class="filters">
-      <input type="text" id="filter-title" placeholder="🔍 Cerca per titolo...">
-      <input type="text" id="filter-author" placeholder="👤 Cerca per autore...">
-      <button id="reset">🔄 Reset</button>
+    <div class="header-content">
+      <h1>📚 Biblioteca Digitale</h1>
+      <div id="auth-section">
+        <!-- Mostrato quando NON sei loggato -->
+        <div id="login-buttons" class="auth-buttons">
+          <button id="show-login-btn" class="btn-primary">🔐 Accedi</button>
+          <button id="show-register-btn" class="btn-secondary">📝 Registrati</button>
+        </div>
+        <!-- Mostrato quando SEI loggato -->
+        <div id="user-info" class="user-info" style="display: none;">
+          <span id="user-name"></span>
+          <span id="user-role" class="badge"></span>
+          <button id="logout-btn" class="btn-danger">🚪 Esci</button>
+        </div>
+      </div>
     </div>
   </header>
 
-  <main>
+  <!-- Modal Login -->
+  <div id="login-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" data-modal="login-modal">&times;</span>
+      <h2>🔐 Accedi</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label>📧 Email</label>
+          <input type="email" id="login-email" required>
+        </div>
+        <div class="form-group">
+          <label>🔒 Password</label>
+          <input type="password" id="login-password" required>
+        </div>
+        <button type="submit" class="btn-primary">Accedi</button>
+        <div id="login-error" class="error-message"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Registrazione -->
+  <div id="register-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" data-modal="register-modal">&times;</span>
+      <h2>📝 Registrati</h2>
+      <form id="register-form">
+        <div class="form-group">
+          <label>👤 Nome Completo</label>
+          <input type="text" id="register-name" required>
+        </div>
+        <div class="form-group">
+          <label>📧 Email</label>
+          <input type="email" id="register-email" required>
+        </div>
+        <div class="form-group">
+          <label>🔒 Password</label>
+          <input type="password" id="register-password" required minlength="8">
+        </div>
+        <button type="submit" class="btn-primary">Registrati</button>
+        <div id="register-error" class="error-message"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Navigazione Tab -->
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="books">📚 Libri</button>
+    <button class="tab-btn" data-tab="loans" id="loans-tab" style="display: none;">📖 Miei Prestiti</button>
+    <button class="tab-btn" data-tab="admin" id="admin-tab" style="display: none;">⚙️ Gestione</button>
+  </nav>
+
+  <!-- Tab Libri -->
+  <main id="books-tab-content" class="tab-content active">
+    <div class="filters">
+      <input type="text" id="filter-title" placeholder="🔍 Cerca per titolo...">
+      <input type="text" id="filter-author" placeholder="👤 Cerca per autore...">
+      <button id="reset" class="btn-secondary">🔄 Reset</button>
+    </div>
+
     <table id="books-table">
       <thead>
         <tr>
@@ -25,10 +94,12 @@
           <th>Autore</th>
           <th>Anno</th>
           <th>ISBN</th>
+          <th>Stato</th>
+          <th>Azioni</th>
         </tr>
       </thead>
       <tbody id="table-body">
-        <tr><td colspan="5" class="loading">Caricamento...</td></tr>
+        <tr><td colspan="7" class="loading">⏳ Caricamento...</td></tr>
       </tbody>
     </table>
 
@@ -38,6 +109,88 @@
       <button id="next">Avanti ➡️</button>
     </div>
   </main>
+
+  <!-- Tab Prestiti -->
+  <main id="loans-tab-content" class="tab-content">
+    <h2>📖 I Miei Prestiti</h2>
+    <table id="loans-table">
+      <thead>
+        <tr>
+          <th>Libro</th>
+          <th>Data Prestito</th>
+          <th>Data Restituzione</th>
+          <th>Stato</th>
+          <th>Azioni</th>
+        </tr>
+      </thead>
+      <tbody id="loans-body">
+        <tr><td colspan="5" class="loading">Nessun prestito</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <!-- Tab Admin -->
+  <main id="admin-tab-content" class="tab-content">
+    <h2>⚙️ Gestione Biblioteca</h2>
+    
+    <div class="admin-section">
+      <h3>➕ Aggiungi Autore</h3>
+      <form id="add-author-form">
+        <div class="form-group">
+          <label>Nome Autore</label>
+          <input type="text" id="author-name" required>
+        </div>
+        <div class="form-group">
+          <label>Biografia</label>
+          <textarea id="author-bio" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn-primary">Aggiungi Autore</button>
+      </form>
+    </div>
+
+    <div class="admin-section">
+      <h3>➕ Aggiungi Libro</h3>
+      <form id="add-book-form">
+        <div class="form-group">
+          <label>Titolo</label>
+          <input type="text" id="book-title" required>
+        </div>
+        <div class="form-group">
+          <label>ISBN</label>
+          <input type="text" id="book-isbn" required>
+        </div>
+        <div class="form-group">
+          <label>Autore</label>
+          <select id="book-author" required>
+            <option value="">Seleziona autore...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Anno</label>
+          <input type="number" id="book-year" min="1000" max="2099">
+        </div>
+        <button type="submit" class="btn-primary">Aggiungi Libro</button>
+      </form>
+    </div>
+  </main>
+
+  <!-- Modal Prestito -->
+  <div id="loan-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" data-modal="loan-modal">&times;</span>
+      <h2>📖 Richiedi Prestito</h2>
+      <p id="loan-book-title"></p>
+      <form id="loan-form">
+        <div class="form-group">
+          <label>📅 Data Prestito</label>
+          <input type="date" id="loan-date" required>
+        </div>
+        <input type="hidden" id="loan-book-id">
+        <button type="submit" class="btn-primary">Conferma Prestito</button>
+        <div id="loan-error" class="error-message"></div>
+      </form>
+    </div>
+  </div>
 
   <footer>
     <p>Lavoro svolto da: Edoardo Spinelli, Rodari Filippo, Luca Cadei e Nicholas Martorelli</p>

@@ -1,38 +1,47 @@
+import Author from '#models/author'
 import type { HttpContext } from '@adonisjs/core/http'
+import { createAuthorValidator, updateAuthorValidator  } from '#validators/author'
 
 export default class AuthorsController {
-  /**
-   * Display a list of resource
-   */
-  async index({}: HttpContext) {}
+  async index({ request }: HttpContext) {
+    const page = request.input('page', 1)
+    const perPage = request.input('per_page', 25)
+    const search = request.input('search', '')
 
-  /**
-   * Display form to create a new record
-   */
-  async create({}: HttpContext) {}
+    const query = Author.query()
 
-  /**
-   * Handle form submission for the create action
-   */
-  async store({}: HttpContext) {}
+    if (search) {
+      query.where('name', 'like', `%${search}%`)
+        .orWhere('bio', 'like', `%${search}%`)
+    }
 
-  /**
-   * Show individual record
-   */
-  async show({}: HttpContext) {}
+    const authors = await query.paginate(page, perPage)
+    return authors.toJSON()
+  }
 
-  /**
-   * Edit individual record
-   */
-  async edit({}: HttpContext) {}
+  async show({ params }: HttpContext) {
+    const author = await Author.findOrFail(params.id)
+    await author.load('books')
+    return author
+  }
 
-  /**
-   * Handle form submission for the edit action
-   */
-  async update({}: HttpContext) {}
+  async store({ request }: HttpContext) {
+    const data = await request.validateUsing(createAuthorValidator)
+    const author = await Author.create(data)
+    return author
+  }
 
-  /**
-   * Delete record
-   */
-  async destroy({}: HttpContext) {}
+  async update({ params, request }: HttpContext) {
+    const author = await Author.findOrFail(params.id)
+    const data = await request.validateUsing(updateAuthorValidator)
+    author.merge(data)
+    await author.save()
+    return author
+  }
+
+  async destroy({ params, response }: HttpContext) {
+    const author = await Author.findOrFail(params.id)
+    await author.delete()
+    return response.noContent()
+  }
 }
