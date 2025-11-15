@@ -1,0 +1,491 @@
+RELAZIONE TECNICA
+Sistema di Gestione Biblioteca Digitale
+Corso: ICT 2023/2025
+Studenti: Edoardo Spinelli, Rodari Filippo, Luca Cadei, Nicholas Martorelli
+Data: Novembre 2024
+
+1. INTRODUZIONE
+Questa relazione descrive il progetto di sviluppo del sistema backend per la gestione di una biblioteca digitale. 
+Il sistema sviluppato permette la gestione completa del catalogo, includendo informazioni relative ai libri, agli autori, agli utenti registrati e alle operazioni di prestito. 
+Particolare attenzione è stata posta all'implementazione di un sistema di autenticazione e autorizzazione robusto, che garantisce l'accesso controllato alle diverse funzionalità in base al ruolo dell'utente.
+Per lo sviluppo del progetto sono state utilizzate tecnologie moderne e consolidate nell'ambito dello sviluppo web. 
+Il framework AdonisJS versione 6, basato su Node.js e TypeScript, è stato scelto come base per il backend, garantendo type-safety e un'architettura ben strutturata. Come database è stato utilizzato MySQL 8.0. 
+È stata inoltre sviluppata un'interfaccia web frontend utilizzando tecnologie standard (HTML, CSS, JavaScript) per dimostrare l'utilizzo pratico delle API.
+
+
+2. ARCHITETTURA DEL SISTEMA
+
+2.1 Pattern Architetturale
+L'architettura del sistema segue il pattern Model-View-Controller (MVC), che garantisce una chiara separazione delle responsabilità e facilita la manutenibilità del codice. 
+Nel contesto di un'applicazione API-first come la nostra, i modelli rappresentano le entità del dominio (User, Author, Book, Loan) e gestiscono la logica di accesso ai dati. 
+I controller contengono la logica di business e orchestrano le operazioni tra i diversi componenti del sistema. 
+Le view, in questo caso, sono rappresentate dall'interfaccia web presente nella cartella FE/library, che consuma le API esposte dal backend.
+Questa separazione permette di modificare l'implementazione di un layer senza impattare sugli altri. 
+Ad esempio, è possibile sostituire l'interfaccia web con un'applicazione mobile o un client desktop senza dover modificare la logica di business implementata nei controller o nei modelli.
+
+2.2 Middleware Stack
+Il flusso di elaborazione delle richieste HTTP attraversa una serie di middleware che svolgono funzioni specifiche. 
+Ogni richiesta in ingresso viene prima processata dai middleware globali, poi da quelli di routing e infine raggiunge il controller appropriato. 
+Il middleware ContainerBindingsMiddleware si occupa di iniettare le dipendenze nel container IoC dell'applicazione. 
+Successivamente, il ForceJsonResponseMiddleware garantisce che tutte le risposte siano nel formato JSON, importante per un'API REST. 
+Il middleware CORS gestisce le policy di Cross-Origin Resource Sharing, permettendo al frontend di comunicare con il backend anche se serviti da domini diversi.
+Dopo questi middleware globali, intervengono quelli specifici del router: il BodyParserMiddleware si occupa di parsare il corpo delle richieste (JSON, form-data, etc.), mentre InitializeAuthMiddleware inizializza il sistema di autenticazione controllando la presenza e validità dei token. 
+Infine, i middleware custom (auth, admin, userOrAdmin) implementano la logica di autorizzazione specifica dell'applicazione prima che la richiesta raggiunga il controller.
+
+2.3 Sistema di Autenticazione
+Il sistema di autenticazione implementato è di tipo token-based, seguendo lo standard Bearer Token. 
+Questa scelta è stata dettata dalla natura stateless delle API REST e dalla necessità di garantire scalabilità orizzontale del sistema. 
+Quando un utente effettua il login con credenziali valide, il sistema genera un token univoco che viene memorizzato nel database nella tabella auth_access_tokens. 
+Il client deve includere questo token nell'header Authorization di ogni richiesta successiva.
+L'hashing delle password avviene tramite l'algoritmo Scrypt, configurato con parametri di sicurezza elevati. 
+Scrypt è stato scelto in quanto particolarmente resistente agli attacchi brute-force grazie alla sua natura memory-hard. 
+La configurazione utilizzata prevede un cost factor di 16384, un block size di 8 e un parallelization factor di 1, parametri che bilanciano sicurezza e performance.
+Il sistema implementa due ruoli distinti: admin e user. 
+Gli utenti con ruolo admin hanno accesso completo a tutte le funzionalità del sistema, inclusa la gestione del catalogo. 
+Gli utenti con ruolo user possono effettuare operazioni di lettura sul catalogo e gestire i propri prestiti, ma non possono modificare libri o autori.
+
+
+3. MODELLO DEI DATI
+
+3.1 Schema del Database
+Il database è strutturato in quattro tabelle principali che rappresentano le entità fondamentali del dominio. 
+La tabella users memorizza le informazioni degli utenti registrati, includendo email, password (hashata), nome completo e ruolo. 
+Ogni utente è identificato univocamente da un ID numerico auto-incrementale.
+La tabella authors contiene i dati relativi agli autori dei libri. 
+Oltre all'identificativo univoco e al nome dell'autore, è presente un campo bio opzionale che può contenere informazioni biografiche. 
+La tabella books rappresenta il catalogo della biblioteca e include titolo, codice ISBN (con constraint di unicità), riferimento all'autore, anno di pubblicazione e un flag booleano che indica la disponibilità del libro per il prestito.
+Infine, la tabella loans gestisce le operazioni di prestito. 
+Ogni record rappresenta un prestito e contiene il riferimento all'utente che ha richiesto il prestito, il libro prestato, la data di prestito, la data di restituzione effettiva e un flag booleano che indica se il libro è stato restituito. 
+Le date sono memorizzate utilizzando il tipo DATE di MySQL, garantendo precisione e facilitando le query temporali.
+
+3.2 Relazioni tra Entità
+Le relazioni tra le entità sono state progettate seguendo le best practice della normalizzazione database. 
+Ogni libro appartiene a un singolo autore attraverso una relazione many-to-one implementata tramite la foreign key author_id nella tabella books. 
+Questa scelta modellistica riflette la realtà della maggior parte delle pubblicazioni, dove un libro ha un autore principale identificato. 
+Al contrario, un autore può aver scritto molti libri, realizzando così una relazione one-to-many dal punto di vista dell'autore.
+Un utente può effettuare molteplici prestiti nel tempo, stabilendo una relazione one-to-many tra users e loans. 
+Analogamente, un libro può essere oggetto di molteplici prestiti in momenti diversi, creando una relazione one-to-many anche tra books e loans. 
+Queste relazioni sono implementate tramite foreign key con constraint di integrità referenziale e policy di cascade delete dove appropriato. 
+Ad esempio, l'eliminazione di un utente comporta automaticamente l'eliminazione di tutti i suoi prestiti, mantenendo la consistenza dei dati.
+
+3.3 Vincoli di Integrità
+Il database implementa diversi constraint per garantire l'integrità dei dati. 
+Il codice ISBN è definito come univoco nella tabella books, prevenendo l'inserimento accidentale di duplicati. 
+Le foreign key sono definite con constraint ON DELETE CASCADE dove appropriato: eliminando un autore vengono eliminati tutti i suoi libri, eliminando un utente vengono eliminati tutti i suoi prestiti, ed eliminando un libro vengono eliminati tutti i record di prestito associati.
+Sono inoltre presenti constraint NOT NULL sui campi essenziali come email, password, nome dell'autore, titolo del libro e date di prestito. 
+Il campo role nella tabella users è implementato come ENUM con valori 'user' e 'admin', garantendo che non possano essere inseriti valori non validi. 
+Questi constraint a livello database rappresentano una prima linea di difesa contro dati inconsistenti, complementare alla validazione applicativa.
+
+
+4. SCELTE PROGETTUALI
+
+4.1 Autenticazione Token-Based
+La scelta di implementare un sistema di autenticazione token-based è stata motivata da diverse considerazioni architetturali. 
+Primo, le API REST sono per natura stateless, e l'uso di sessioni server-side avrebbe violato questo principio fondamentale. 
+I token Bearer permettono di mantenere lo stato di autenticazione sul client, trasmettendo ad ogni richiesta le credenziali necessarie.
+Secondo, questa architettura facilita la scalabilità orizzontale. 
+Non essendo necessario mantenere sessioni in memoria sul server, è possibile distribuire il carico su più istanze dell'applicazione senza dover implementare meccanismi di condivisione dello stato di sessione. 
+Terzo, i token sono facilmente utilizzabili da diversi tipi di client: applicazioni web, mobile native, desktop, o altri servizi backend che devono interagire con le nostre API.
+L'implementazione utilizza il modulo @adonisjs/auth con il provider DbAccessTokensProvider, che memorizza i token nel database. 
+Ogni token ha una durata illimitata per semplicità, ma in un ambiente di produzione sarebbe opportuno implementare una scadenza temporale e un meccanismo di refresh token. 
+Il token viene generato automaticamente al momento del login utilizzando un generatore crittograficamente sicuro, garantendo l'impossibilità pratica di predire o falsificare token validi.
+
+4.2 Sistema di Autorizzazione Basato su Middleware
+L'autorizzazione è implementata attraverso un sistema di middleware modulari che possono essere composti per creare policy di accesso complesse. 
+Il middleware auth rappresenta il livello base di protezione: verifica semplicemente che l'utente sia autenticato controllando la presenza e validità del token. 
+Se il token non è presente o non è valido, la richiesta viene rifiutata con un errore 401 Unauthorized.
+Il middleware admin implementa un controllo più restrittivo, verificando che l'utente autenticato abbia il ruolo 'admin'. 
+Questo middleware è applicato a tutte le operazioni di scrittura (CREATE, UPDATE, DELETE) sulle entità books e authors, garantendo che solo gli amministratori possano modificare il catalogo.
+Il middleware userOrAdmin implementa una logica più sofisticata necessaria per la gestione degli utenti. 
+Quando un utente tenta di modificare un profilo (PUT /users/:id), il middleware verifica che l'ID nell'URL corrisponda all'ID dell'utente autenticato oppure che l'utente sia un admin. 
+In questo modo, ogni utente può modificare solo il proprio profilo, mentre gli admin mantengono il controllo completo. 
+Questa soluzione elegante evita la duplicazione di logica nei controller e rende le policy di autorizzazione esplicite e facilmente manutenibili.
+
+4.3 Validazione degli Input con VineJS
+La validazione degli input utente è un aspetto critico per la sicurezza e l'integrità dei dati. 
+VineJS è stato scelto come libreria di validazione per diverse ragioni. 
+Primo, è la soluzione raccomandata e mantenuta dal team di AdonisJS, garantendo integrazione ottimale con il framework. 
+Secondo, offre un'API fluente e dichiarativa che rende i validator facilmente leggibili e manutenibili. 
+Terzo, fornisce excellent integration con TypeScript, permettendo di inferire automaticamente i tipi dei dati validati.
+Per ogni operazione di scrittura è stato creato un validator dedicato. 
+Ad esempio, il createBookValidator definisce le regole per la creazione di un nuovo libro: il titolo deve essere una stringa non vuota di massimo 255 caratteri, l'ISBN deve rispettare il pattern numerico con eventuali trattini, l'author_id deve essere un numero positivo. 
+Il validator si occupa anche di sanitizzare i dati, rimuovendo spazi bianchi superflui (trim) e convertendo i tipi dove necessario.
+Un aspetto importante è la presenza di validator separati per le operazioni di creazione e aggiornamento. 
+Il createBookValidator richiede tutti i campi obbligatori, mentre l'updateBookValidator rende tutti i campi opzionali, permettendo aggiornamenti parziali delle risorse. 
+Questo approccio segue le best practice REST e migliora l'usabilità dell'API.
+
+4.4 Factory Pattern per la Generazione di Dati di Test
+Il pattern Factory è stato implementato per facilitare la generazione di dati di test realistici e coerenti. 
+Le factory sono definite utilizzando @faker-js/faker, una libreria che genera dati casuali ma verosimili in molte categorie (nomi, date, testi, numeri, etc.).
+AuthorFactory genera istanze di autori con nomi completi realistici e biografie costituite da più paragrafi di testo lorem ipsum. 
+BookFactory genera libri con titoli di tre parole, codici ISBN numerici di 13 cifre, anni di pubblicazione casuali negli ultimi 50 anni e stati di disponibilità casuali. 
+Importante notare che BookFactory definisce anche la relazione con AuthorFactory, permettendo di generare automaticamente l'autore associato ad ogni libro.
+Questa implementazione permette di popolare rapidamente il database con dati di test per lo sviluppo e il debugging. 
+Ad esempio, con una singola chiamata è possibile creare cinque autori, ciascuno con tre libri associati. 
+Le factory sono particolarmente utili anche per i test automatizzati, garantendo che ogni test parta da uno stato iniziale consistente e prevedibile.
+
+4.5 Seeder Idempotente
+La strategia di seeding del database è stata progettata per essere idempotente, ovvero può essere eseguita molteplici volte senza creare duplicati o causare errori. 
+Questo è particolarmente importante in scenari di sviluppo dove si potrebbe voler resettare e ripopolare il database frequentemente.
+L'idempotenza è ottenuta utilizzando il metodo updateOrCreate invece del semplice create. 
+Questo metodo cerca prima un record esistente in base a una chiave univoca (ad esempio, l'ISBN per i libri o il nome per gli autori). 
+Se il record esiste, viene aggiornato con i nuovi dati; se non esiste, viene creato. 
+In questo modo, eseguire il seeder più volte aggiorna semplicemente i dati esistenti invece di tentare di creare duplicati e fallire a causa dei constraint di unicità.
+Un aspetto tecnico importante è la gestione degli ID nelle relazioni. 
+Poiché gli ID generati dal database potrebbero cambiare tra diverse esecuzioni del seeder, viene mantenuta una mappa in memoria che associa gli ID logici (usati nel file di seed) agli ID effettivi del database. 
+Questo permette di mantenere corrette le relazioni tra autori e libri anche quando il seeder viene eseguito su un database già popolato.
+
+4.6 Comando CLI per la Gestione degli Admin
+Il comando create:admin è stato implementato per semplificare la creazione di utenti amministratori. 
+In un'applicazione reale, il primo utente admin deve essere creato prima che l'applicazione sia funzionalmente utilizzabile, creando un problema di bootstrap. 
+Permettere la registrazione diretta come admin tramite l'API sarebbe un grave problema di sicurezza.
+Il comando risolve questo dilemma fornendo un'interfaccia a riga di comando sicura per la creazione di admin. 
+Essendo eseguito direttamente sul server, richiede accesso fisico o SSH al sistema, rappresentando un livello di sicurezza appropriato per un'operazione privilegiata. 
+Il comando utilizza l'interfaccia prompts di AdonisJS per richiedere interattivamente email, password e nome completo, con la password mascherata per sicurezza.
+Prima di creare l'admin, il comando verifica che non esista già un utente con la stessa email, prevenendo errori di duplicazione. 
+La password viene hashata utilizzando lo stesso meccanismo dell'endpoint di registrazione, garantendo consistenza. 
+Una volta creato l'admin, viene visualizzato un messaggio di conferma con l'email dell'utente creato.
+
+4.7 Gestione del Ciclo di Vita dei Prestiti
+La logica di gestione dei prestiti implementa un workflow che riflette le operazioni reali di una biblioteca. 
+Quando viene creato un nuovo prestito, il sistema verifica prima che il libro richiesto sia disponibile interrogando il flag available nella tabella books. 
+Se il libro è già in prestito ad un altro utente, la richiesta viene rifiutata con un errore esplicativo.
+Se il libro è disponibile, viene creato il record di prestito nella tabella loans con i dati forniti dall'utente (book_id e loan_date) e l'ID dell'utente autenticato recuperato dal token. 
+Contemporaneamente, il flag available del libro viene impostato a false, impedendo che venga prestato a più utenti contemporaneamente. 
+Tutte queste operazioni avvengono implicitamente in una transazione database, garantendo consistenza anche in caso di errori.
+La restituzione del libro avviene tramite un'operazione di update sul prestito, impostando il flag returned a true e la data di restituzione. 
+A questo punto il flag available del libro viene nuovamente impostato a true, rendendo il libro disponibile per nuovi prestiti. 
+È importante notare che questa operazione può essere eseguita solo dall'utente che ha effettuato il prestito o da un amministratore, garantendo che gli utenti non possano modificare i prestiti altrui.
+
+
+5. IMPLEMENTAZIONE DELLE API REST
+
+5.1 Principi di Design
+Le API implementate seguono i principi architetturali REST (Representational State Transfer) e le convenzioni comuni nell'industria. 
+Ogni risorsa è identificata da un URL univoco e le operazioni disponibili sono mappate sui metodi HTTP standard: GET per la lettura, POST per la creazione, PUT per l'aggiornamento completo, PATCH per l'aggiornamento parziale, DELETE per l'eliminazione.
+Gli URL seguono una struttura gerarchica e semantica. 
+Le collezioni sono rappresentate al plurale (ad esempio /books per la lista di tutti i libri), mentre le risorse individuali sono identificate aggiungendo l'ID (ad esempio /books/5 per il libro con ID 5). 
+Le sotto-risorse seguono la stessa logica: /authors/3/books potrebbe rappresentare tutti i libri di un autore specifico, anche se questa funzionalità non è stata implementata nel progetto corrente.
+Le risposte utilizzano i codici di stato HTTP appropriati per comunicare l'esito dell'operazione. 
+
+200 OK indica successo per operazioni di lettura e aggiornamento, 201 Created per creazioni riuscite, 204 No Content per eliminazioni riuscite. 
+Gli errori utilizzano i codici 4xx per problemi client-side (400 Bad Request per validazione fallita, 401 Unauthorized per autenticazione mancante, 403 Forbidden per autorizzazione insufficiente, 404 Not Found per risorse inesistenti) e 5xx per problemi server-side.
+
+5.2 Endpoints Pubblici
+Gli endpoint pubblici sono accessibili senza autenticazione e permettono le operazioni fondamentali per l'utilizzo dell'applicazione. 
+L'endpoint POST /register permette la registrazione di nuovi utenti fornendo email, password e nome completo. 
+La validazione garantisce che l'email sia in formato valido e che la password abbia almeno 8 caratteri. 
+Se la registrazione ha successo, viene restituito l'oggetto utente creato insieme ad un token di autenticazione, permettendo l'accesso immediato senza dover effettuare un login separato.
+L'endpoint POST /login autentica un utente esistente verificando email e password. 
+Se le credenziali sono corrette, viene generato e restituito un nuovo token di autenticazione che il client dovrà includere nelle richieste successive. 
+La risposta include anche l'oggetto utente con le sue proprietà (incluso il ruolo), permettendo al client di configurare l'interfaccia appropriatamente.
+Gli endpoint GET /books e GET /authors permettono la consultazione pubblica del catalogo. 
+Supportano parametri di query string per la paginazione (page, per_page) e la ricerca (search). 
+La ricerca è case-insensitive e cerca nel titolo e nell'ISBN per i libri, nel nome e nella biografia per gli autori. 
+Le risposte sono paginate per default a 25 elementi per pagina, con metadata che indicano la pagina corrente e il numero totale di pagine.
+
+5.3 Endpoints Protetti
+Gli endpoint protetti richiedono un token di autenticazione valido nell'header Authorization nel formato "Bearer {token}". 
+Se il token è mancante o invalido, tutte le richieste vengono rifiutate con un errore 401.
+Gli endpoint di gestione dei prestiti sono accessibili a tutti gli utenti autenticati. 
+GET /loans restituisce la lista dei prestiti dell'utente corrente (o tutti i prestiti se l'utente è admin). 
+POST /loans crea un nuovo prestito verificando la disponibilità del libro. 
+PUT /loans/:id permette di marcare un prestito come restituito. 
+DELETE /loans/:id, riservato agli admin, permette di eliminare definitivamente un prestito dal sistema.
+Gli endpoint di gestione del catalogo (POST/PUT/DELETE su /books e /authors) sono protetti dal middleware admin, garantendo che solo gli amministratori possano modificare il catalogo. 
+Questi endpoint accettano i dati validati e eseguono le operazioni corrispondenti, restituendo l'oggetto aggiornato o un codice 204 per le eliminazioni.
+Gli endpoint di gestione utenti permettono agli utenti di visualizzare e modificare i propri dati. 
+GET /users/:id e PUT /users/:id utilizzano il middleware userOrAdmin, permettendo a ciascun utente di accedere solo al proprio profilo, mentre gli admin possono accedere a tutti i profili. 
+Questo design bilancia privacy e necessità amministrative.
+
+5.4 Formato delle Risposte
+Tutte le risposte sono in formato JSON con l'header Content-Type impostato a "application/json". 
+Le risposte di successo per operazioni di lettura e creazione includono i dati richiesti. 
+Per le collezioni, i dati sono wrappati in un oggetto che include anche metadata di paginazione:
+json
+{
+  "meta": {
+    "currentPage": 1,
+    "lastPage": 5,
+    "perPage": 25,
+    "total": 120
+  },
+  "data": [...]
+}
+Le risposte di errore seguono una struttura consistente con un campo error che descrive il problema in linguaggio naturale. 
+Gli errori di validazione includono dettagli specifici su quali campi hanno fallito la validazione e perché. 
+Questa consistenza nel formato delle risposte facilita la gestione degli errori sul client.
+
+
+6. SICUREZZA
+
+6.1 Sicurezza delle Password
+La sicurezza delle password è implementata seguendo le raccomandazioni OWASP. 
+Le password non vengono mai memorizzate in chiaro ma solo in forma di hash crittografico. 
+L'algoritmo utilizzato è Scrypt, scelto per la sua resistenza agli attacchi brute-force tramite hardware specializzato. 
+Scrypt è infatti un algoritmo memory-hard, che richiede una quantità significativa di memoria oltre al tempo di calcolo, rendendo economicamente non conveniente l'uso di hardware dedicato per attacchi su larga scala.
+I parametri di configurazione di Scrypt sono stati impostati per bilanciare sicurezza e performance. 
+Il cost factor di 16384 garantisce che ogni operazione di hashing richieda circa 100-200ms su hardware moderno, abbastanza per essere impercettibile per un utente legittimo ma sufficiente a rendere impraticabile un attacco brute-force. 
+Il salting è gestito automaticamente dall'implementazione, con un salt univoco generato per ogni password che impedisce l'uso di rainbow tables precompilate.
+La validazione delle password richiede un minimo di 8 caratteri. 
+In un'applicazione di produzione, sarebbe opportuno implementare requisiti più stringenti (lunghezza minima maggiore, presenza di caratteri speciali, numeri, maiuscole/minuscole), ma per semplicità in questo progetto didattico i requisiti sono stati mantenuti minimi.
+
+6.2 Protezione da SQL Injection
+La protezione da SQL Injection è garantita dall'utilizzo consistente dell'ORM Lucid per tutte le operazioni sul database. 
+Lucid utilizza internamente query parametrizzate, dove i valori forniti dall'utente vengono passati separatamente dal testo della query e correttamente escaped dal driver del database. 
+Questo rende impossibile l'iniezione di codice SQL arbitrario attraverso gli input utente.
+Anche nelle rare situazioni dove sono state utilizzate query raw per operazioni complesse, i parametri sono stati sempre passati attraverso i binding dell'ORM invece di concatenazione di stringhe. 
+Questo approccio viene applicato automaticamente da Lucid, ma è importante che gli sviluppatori ne siano consapevoli e evitino di bypassare queste protezioni con query costruite manualmente.
+
+6.3 Gestione delle Cross-Origin Requests
+Il Cross-Origin Resource Sharing (CORS) è configurato per permettere al frontend di comunicare con il backend anche quando serviti da origini diverse. 
+In modalità sviluppo, CORS è configurato per accettare richieste da qualsiasi origine, semplificando il workflow di sviluppo. 
+In un ambiente di produzione, questa configurazione dovrebbe essere ristretta per accettare richieste solo da domini specifici e fidati.
+La configurazione CORS include anche il supporto per credenziali (credentials: true), permettendo l'invio di token di autenticazione. 
+I metodi HTTP permessi includono tutti quelli utilizzati dall'applicazione (GET, POST, PUT, DELETE), mentre le opzioni preflight sono gestite automaticamente dal middleware.
+
+6.4 Protezione da XSS
+La protezione da Cross-Site Scripting è facilitata dall'architettura dell'applicazione. 
+Essendo un'API pura che restituisce solo JSON senza rendering di HTML sul server, molti vettori di attacco XSS sono automaticamente mitigati. 
+Il frontend implementa le proprie protezioni gestendo correttamente l'escape dei dati prima di inserirli nel DOM.
+Inoltre, la validazione degli input rimuove o escape automaticamente caratteri potenzialmente pericolosi. 
+I campi di tipo string vengono sanitizzati con trim() e altri metodi di pulizia forniti da VineJS. 
+Questo approccio defense-in-depth garantisce che anche se un layer di protezione fallisce, altri layer sono pronti a prevenire l'exploit.
+
+6.5 Rate Limiting e Protezione da Abusi
+Sebbene non implementato in questa versione del progetto, un sistema di rate limiting dovrebbe essere aggiunto in produzione per prevenire abusi delle API. 
+Il rate limiting limiterebbe il numero di richieste che un singolo client può effettuare in un determinato intervallo di tempo, prevenendo attacchi denial-of-service e tentativi di brute-force sugli endpoint di autenticazione.
+AdonisJS fornisce supporto per rate limiting attraverso moduli dedicati che possono essere facilmente integrati. 
+Una configurazione tipica potrebbe limitare gli endpoint di autenticazione a 5 tentativi per IP ogni 15 minuti, mentre gli altri endpoint potrebbero permettere 100 richieste per utente autenticato al minuto.
+
+
+7. FRONTEND
+
+7.1 Architettura Frontend
+L'interfaccia web è stata sviluppata utilizzando tecnologie standard del web (HTML5, CSS3, JavaScript ES6+) senza framework particolari. 
+Questa scelta è stata motivata dalla natura didattica del progetto e dal desiderio di mantenere l'applicazione leggera e facilmente comprensibile. 
+L'assenza di build tools e bundlers semplifica il deployment e il debugging.
+Il JavaScript utilizza la Fetch API per le chiamate HTTP alle API backend. 
+Tutte le chiamate sono gestite in modo asincrono utilizzando async/await, garantendo un'esperienza utente fluida senza blocchi dell'interfaccia. 
+Il token di autenticazione è memorizzato nel localStorage del browser e viene automaticamente incluso nell'header Authorization di ogni richiesta.
+L'architettura segue un approccio Single Page Application (SPA) dove la navigazione tra le diverse sezioni avviene senza ricaricare la pagina. 
+Questo è implementato attraverso un sistema di tab che mostrano/nascondono i diversi contenuti in base all'interazione dell'utente. 
+Questo approccio migliora notevolmente la user experience, eliminando i tempi di caricamento e mantenendo lo stato dell'applicazione.
+
+7.2 Funzionalità Implementate
+L'interfaccia si apre con una vista del catalogo pubblicamente accessibile. 
+Gli utenti possono sfogliare l'elenco dei libri, utilizzare i filtri di ricerca per titolo o autore, e navigare attraverso le pagine dei risultati. 
+Ogni libro mostra lo stato di disponibilità con indicatori visivi chiari (badge verde per disponibile, rosso per in prestito).
+Gli utenti non autenticati vedono un'interfaccia semplificata con pulsanti per login e registrazione. 
+Cliccando su questi pulsanti si aprono modal dialog che permettono l'inserimento delle credenziali. 
+Una volta autenticati, l'interfaccia si adatta mostrando il nome dell'utente, il suo ruolo, e sbloccando funzionalità aggiuntive. 
+Gli utenti normali vedono comparire la tab "Miei Prestiti" dove possono consultare lo storico dei propri prestiti e restituire i libri.
+Per gli utenti con ruolo admin, appare anche la tab "Gestione" che fornisce form per aggiungere nuovi autori e libri al catalogo. 
+Questi form includono validazione client-side che replica parzialmente quella server-side, fornendo feedback immediato all'utente prima ancora di inviare la richiesta. 
+Gli admin vedono anche pulsanti di eliminazione accanto ad ogni libro nel catalogo principale.
+La funzionalità di prestito è accessibile cliccando sul pulsante "Prendi" accanto ad un libro disponibile. 
+Si apre un modal che mostra il titolo del libro e richiede di confermare la data di prestito (pre-popolata con la data odierna). 
+Confermando, viene creato il prestito e l'interfaccia si aggiorna automaticamente riflettendo il nuovo stato del libro.
+
+7.3 User Experience
+Particolare attenzione è stata posta all'usabilità e al feedback all'utente. 
+Tutte le operazioni asincrone mostrano indicatori di caricamento, evitando che l'utente si chieda se l'applicazione sta funzionando. 
+Le operazioni completate mostrano notifiche toast temporanee nell'angolo dello schermo che confermano il successo o descrivono l'errore occorso.
+Gli errori sono gestiti con messaggi comprensibili in linguaggio naturale. 
+Ad esempio, tentando di prendere in prestito un libro non disponibile, l'utente non vede un criptico codice di errore ma un messaggio chiaro come "Questo libro non è attualmente disponibile per il prestito". 
+Gli errori di validazione mostrano esattamente quale campo ha problemi e perché.
+Il design responsive garantisce che l'interfaccia sia utilizzabile su dispositivi con schermi di diverse dimensioni. 
+Le griglie CSS si adattano dinamicamente, mostrando più colonne su schermi larghi e riducendole su dispositivi mobili. 
+I pulsanti e gli elementi interattivi hanno dimensioni appropriate per il touch input, facilitando l'uso su tablet e smartphone.
+
+7.4 Gestione dello Stato Client-Side
+Lo stato dell'applicazione client è gestito attraverso il localStorage del browser e variabili JavaScript globali. 
+Il token di autenticazione viene persistito nel localStorage, permettendo all'utente di rimanere autenticato anche dopo aver chiuso e riaperto il browser. 
+Al caricamento della pagina, l'applicazione controlla la presenza del token e, se presente, recupera automaticamente i dati dell'utente dal backend.
+Questa persistenza dello stato migliora significativamente l'esperienza utente, evitando di richiedere login ripetuti. 
+Tuttavia, per motivi di sicurezza, in un'applicazione di produzione sarebbe opportuno implementare una scadenza dei token e richiedere periodicamente la riautenticazione, specialmente per operazioni sensibili.
+
+
+8. TESTING E SVILUPPO
+
+8.1 Ambiente di Sviluppo
+L'ambiente di sviluppo è stato configurato per massimizzare la produttività del team. 
+Node.js versione 20 LTS è stato scelto come runtime per garantire stabilità e supporto a lungo termine. 
+Il package manager npm è stato utilizzato per la gestione delle dipendenze, con un file package-lock.json versionato per garantire build riproducibili.
+Il file .env contiene tutte le configurazioni sensibili e specifiche dell'ambiente (credenziali database, secret keys, porte di ascolto). 
+Questo file non è versionato su Git per sicurezza, e viene fornito un file .env.example come template che i membri del team possono copiare e personalizzare con le proprie configurazioni locali.
+TypeScript è configurato con regole strict che catturano molti errori comuni a compile-time. 
+L'integrazione con Visual Studio Code fornisce autocompletamento intelligente, refactoring automatico e visualizzazione degli errori in tempo reale, accelerando significativamente il processo di sviluppo.
+
+8.2 Database di Sviluppo
+Per lo sviluppo locale, ogni membro del team utilizza un'istanza MySQL locale configurata secondo le specifiche del progetto. 
+Le migrazioni database garantiscono che tutti i membri abbiano lo stesso schema, eliminando il classico problema "funziona sul mio computer". 
+Le migrazioni sono file TypeScript versionati che descrivono le modifiche allo schema in modo programmatico.
+Il workflow tipico prevede l'esecuzione del comando node ace migration:run per applicare tutte le migrazioni pendenti, seguito da node ace db:seed per popolare il database con dati di test. 
+Questo permette di avere un ambiente di sviluppo funzionante in pochi secondi, facilitando l'onboarding di nuovi membri del team.
+Un aspetto importante è la possibilità di fare rollback delle migrazioni tramite node ace migration:rollback. 
+Questo è essenziale quando si lavora su modifiche allo schema: si può testare una migrazione, fare rollback se ci sono problemi, modificare il codice e riapplicarla. 
+Questo ciclo iterativo è fondamentale per lo sviluppo di modifiche complesse allo schema.
+
+8.3 Strategia di Testing
+Sebbene test automatizzati formali non siano stati implementati in questa versione del progetto a causa dei vincoli temporali, è stata definita una strategia di testing manuale sistematica. 
+Per ogni endpoint API è stato preparato un documento che descrive gli scenari di test da verificare: input validi, input invalidi, test dei vincoli di autorizzazione, test dei casi limite.
+Strumenti come Postman o Thunder Client (estensione di VS Code) sono stati utilizzati per testare manualmente le API durante lo sviluppo. 
+Le collection di request sono state condivise tra i membri del team, garantendo che tutti potessero facilmente verificare il funzionamento degli endpoint a cui stavano lavorando.
+Il frontend è stato testato manualmente utilizzando diversi browser (Chrome, Firefox, Safari) e dispositivi per verificare la compatibilità e il comportamento responsive. 
+Sono stati identificati e risolti diversi bug legati alla gestione dello stato e alla sincronizzazione con il backend.
+
+8.4 Gestione delle Versioni
+Il progetto utilizza Git per il version control, con repository ospitato su GitHub/GitLab. 
+La strategia di branching segue un modello semplificato: un branch main contenente il codice stabile e funzionante, e feature branch per lo sviluppo di nuove funzionalità. 
+Una volta completata e testata una feature, viene effettuato un merge sul main tramite pull request.
+Le pull request servono anche come punto di code review, dove altri membri del team possono esaminare le modifiche, suggerire miglioramenti e identificare potenziali problemi prima che il codice venga integrato. 
+Questo processo peer review ha portato a miglioramenti significativi nella qualità del codice e ha facilitato la condivisione di conoscenza tra i membri del team.
+I commit message seguono le convenzioni conventional commits, con prefissi che indicano il tipo di modifica (feat:, fix:, docs:, refactor:). 
+Questo rende molto più semplice leggere la storia del progetto e generare automaticamente changelog dettagliati.
+
+
+9. POSSIBILI SVILUPPI FUTURI
+
+9.1 Funzionalità Aggiuntive
+Il sistema attuale implementa le funzionalità core di una biblioteca digitale, ma molte feature aggiuntive potrebbero migliorare significativamente l'esperienza utente. 
+Un sistema di ricerca avanzata con filtri multipli (genere, anno di pubblicazione, disponibilità) e ordinamento personalizzabile renderebbe più semplice trovare libri specifici in cataloghi grandi.
+Un sistema di recensioni e valutazioni permetterebbe agli utenti di condividere opinioni sui libri e scoprire nuove letture basate sulle preferenze della community. 
+Questo richiederebbe nuove tabelle (reviews, ratings) e logica per calcolare e visualizzare rating aggregati.
+Funzionalità di prenotazione permetterebbero agli utenti di mettersi in lista d'attesa per libri attualmente in prestito. 
+Quando il libro viene restituito, il primo utente in lista riceverebbe una notifica automatica. 
+Questo richiederebbe un sistema di code e notifiche (email o push).
+Un sistema di raccomandazioni personalizzate potrebbe analizzare lo storico dei prestiti e suggerire libri simili o dello stesso autore. 
+Algoritmi di collaborative filtering potrebbero identificare utenti con gusti simili e raccomandare i loro libri preferiti.
+
+9.2 Miglioramenti Tecnici
+L'implementazione di test automatizzati completi (unit test, integration test, end-to-end test) garantirebbe maggiore affidabilità e faciliterebbe il refactoring. 
+Framework come Jest per unit testing e Playwright per E2E testing potrebbero essere integrati nel workflow di continuous integration.
+L'introduzione di GraphQL come alternativa o complemento alle API REST potrebbe migliorare l'efficienza, permettendo ai client di richiedere esattamente i dati necessari in una singola query. 
+Questo è particolarmente vantaggioso per applicazioni mobile dove la bandwidth è limitata.
+L'implementazione di full-text search utilizzando Elasticsearch permetterebbe ricerche molto più sofisticate e performanti su cataloghi grandi. 
+Elasticsearch supporta fuzzy matching, sinonimi, relevance scoring e query complesse che vanno oltre le capability di LIKE in SQL.
+Un sistema di caching multi-layer (Redis per session data e query results, CDN per static assets) migliorerebbe drasticamente le performance e ridurrebbe il carico sui server backend. 
+Cache invalidation strategies dovrebbero essere attentamente progettate per garantire consistenza.
+
+9.3 Integrazione con Sistemi Esterni
+L'integrazione con API esterne di biblioteche pubbliche o database bibliografici come Google Books API permetterebbe di arricchire automaticamente i dati dei libri con copertine, descrizioni dettagliate, recensioni professional e informazioni biografiche sugli autori.
+Un sistema di autenticazione federata (OAuth2 con Google, Facebook, GitHub) semplificherebbe la registrazione e il login, riducendo friction per i nuovi utenti. 
+Single Sign-On (SSO) potrebbe essere implementato per ambienti enterprise.
+Integrazione con sistemi di pagamento (Stripe, PayPal) permetterebbe l'implementazione di funzionalità a pagamento come l'estensione dei periodi di prestito, l'acquisto di copie digitali o membership premium con benefici esclusivi.
+Webhook e API pubbliche permetterebbero a sistemi terzi di integrarsi con la biblioteca, ad esempio dashboard amministrative personalizzate, applicazioni mobile native o integrazioni con sistemi di gestione scolastica.
+
+9.4 Accessibilità e Internazionalizzazione
+Il supporto multi-lingua (i18n) renderebbe l'applicazione utilizzabile a livello internazionale. 
+Questo richiederebbe l'estrazione di tutte le stringhe user-facing in file di traduzione e l'implementazione di un sistema di locale switching.
+Miglioramenti all'accessibilità (WCAG 2.1 compliance) garantirebbero che l'applicazione sia utilizzabile da persone con disabilità. 
+Screen reader support, keyboard navigation completa, contrasti appropriati e alternative testuali per contenuti multimediali sono essenziali.
+Un'applicazione mobile native (iOS/Android) o progressive web app (PWA) fornirebbe un'esperienza ottimizzata per dispositivi mobili, con funzionalità offline, notifiche push native e integrazione con le feature specifiche della piattaforma.
+Un sistema di analitycs integrato raccoglierebbe dati sull'utilizzo dell'applicazione, permettendo di identificare pattern, feature più utilizzate e aree di miglioramento. 
+Questi insight guiderebbero lo sviluppo futuro basato su dati reali invece che assunzioni.
+
+
+10. CONCLUSIONI
+
+10.1 Obiettivi Raggiunti
+Il progetto ha raggiunto pienamente gli obiettivi prefissati, realizzando un sistema completo per la gestione di una biblioteca digitale. 
+Il backend API-first fornisce tutte le funzionalità necessarie per gestire catalogo, utenti e prestiti, con un robusto sistema di autenticazione e autorizzazione basato su ruoli.
+L'architettura implementata segue best practice consolidate nell'industria, utilizzando pattern come MVC, middleware composition e ORM per data access. 
+Il codice è ben strutturato, type-safe grazie a TypeScript, e facilmente estendibile per future evoluzioni.
+Il frontend web dimostra l'utilizzo pratico delle API, fornendo un'interfaccia intuitiva e responsive che copre tutti i casi d'uso principali. 
+La separazione netta tra frontend e backend permette facilmente di sviluppare client alternativi (mobile, desktop) che riutilizzano la stessa logica di business.
+
+10.2 Competenze Acquisite
+Lo sviluppo del progetto ha permesso al team di acquisire competenze pratiche su molti aspetti dello sviluppo web moderno. 
+L'utilizzo di AdonisJS ha fornito esperienza su un framework full-featured per Node.js, alternativo ai più comuni Express o NestJS, con convenzioni opinionated che accelerano lo sviluppo.
+L'implementazione del sistema di autenticazione e autorizzazione ha approfondito la comprensione di tematiche di sicurezza fondamentali: hashing delle password, token-based authentication, RBAC (Role-Based Access Control), protezione contro vulnerabilità comuni.
+Il lavoro con database relazionali, ORM, migrazioni e seeder ha rafforzato le competenze di database design e data modeling. 
+L'esperienza con Git e il workflow collaborativo ha migliorato le capacità di lavorare in team su progetti software complessi.
+
+10.3 Sfide Affrontate
+Durante lo sviluppo sono state affrontate diverse sfide tecniche. 
+La gestione corretta del ciclo di vita dei prestiti, garantendo che i libri non possano essere prestati due volte contemporaneamente, ha richiesto attenzione particolare alla consistenza dei dati e alle race condition.
+L'implementazione dei middleware di autorizzazione ha presentato complessità nell'equilibrare sicurezza e usabilità. 
+Il middleware userOrAdmin, che permette agli utenti di modificare solo i propri dati ma agli admin di modificare tutto, rappresenta un pattern utile che bilancia questi requisiti contrastanti.
+La configurazione di CORS per permettere la comunicazione cross-origin tra frontend e backend ha richiesto comprensione approfondita dei security model dei browser. 
+Il bilanciamento tra sicurezza (restringere le origini permesse) e praticità (permettere sviluppo locale) ha richiesto configurazioni diverse per development e production.
+
+10.4 Lezioni Apprese
+L'esperienza del progetto ha evidenziato l'importanza di una pianificazione iniziale solida. 
+Il tempo investito nella progettazione dello schema database e nell'architettura delle API ha ripagato ampiamente, evitando costosi refactoring successivi.
+La consistenza nelle convenzioni è fondamentale in progetti collaborativi. 
+Avere agreement su code style, commit message format, naming conventions e struttura delle directory ha significativamente ridotto friction e migliorato la leggibilità del codice.
+L'importanza del testing è emersa chiaramente. 
+Sebbene i vincoli temporali abbiano limitato l'implementazione di test automatizzati, i bug che sono emersi in fase di testing manuale avrebbero potuto essere catturati molto prima con una test suite adeguata. 
+Nei progetti futuri, il testing dovrebbe essere prioritario fin dall'inizio.La documentazione continua è essenziale. 
+Scrivere questa relazione tecnica mentre il progetto era in corso ha aiutato a chiarire decisioni architetturali e a mantenere allineato il team sugli obiettivi e sulle implementazioni.
+
+biblioteca-digitale/
+├── app/
+│   ├── controllers/     # Controller HTTP
+│   ├── middleware/      # Middleware personalizzati
+│   ├── models/          # Modelli Lucid ORM
+│   └── validators/      # Validator VineJS
+├── config/              # File di configurazione
+├── database/
+│   ├── migrations/      # Migrazioni database
+│   ├── seeders/         # Seeder per dati iniziali
+│   └── factories/       # Factory per test data
+├── start/
+│   ├── routes.ts        # Definizione routes
+│   └── kernel.ts        # Configurazione middleware
+├── FE/
+│   └── library/         # Frontend web
+│       ├── index.html
+│       ├── style.css
+│       └── app.js
+├── .env                 # Variabili d'ambiente
+├── package.json         # Dipendenze npm
+└── tsconfig.json        # Configurazione TypeScript
+
+bash
+# Installazione dipendenze
+npm install
+
+# Esecuzione migrazioni
+node ace migration:run
+
+# Rollback migrazioni
+node ace migration:rollback
+
+# Esecuzione seeder
+node ace db:seed
+
+# Creazione admin
+node ace create:admin
+
+# Avvio server sviluppo
+npm run dev
+
+# Build per produzione
+npm run build
+
+# Avvio produzione
+npm start
+Appendice D: Variabili d'Ambiente
+env
+# Server
+PORT=3333
+HOST=0.0.0.0
+NODE_ENV=development
+
+# Database
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=password
+DB_DATABASE=biblioteca
+
+# Applicazione
+APP_KEY=your_app_key_here
+SESSION_DRIVER=cookie
+
+Fine della Relazione Tecnica
+Documento redatto da: Edoardo Spinelli, Rodari Filippo, Luca Cadei, Nicholas Martorelli
+Corso: ICT 2023/2025
+Data: Novembre 2024
