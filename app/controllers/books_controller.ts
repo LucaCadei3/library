@@ -1,5 +1,6 @@
 import Book from '#models/book'
 import type { HttpContext } from '@adonisjs/core/http'
+import { createBookValidator, updateBookValidator } from '#validators/book'
 
 export default class BooksController {
   async index({ request }: HttpContext) {
@@ -33,8 +34,7 @@ export default class BooksController {
   }
 
   async store({ request }: HttpContext) {
-    // Implementare validazione (vedi punto 5)
-    const data = request.only(['title', 'isbn', 'author_id', 'year', 'available'])
+    const data = await request.validateUsing(createBookValidator)
     const book = await Book.create(data)
     await book.load('author')
     return book
@@ -42,7 +42,7 @@ export default class BooksController {
 
   async update({ params, request }: HttpContext) {
     const book = await Book.findOrFail(params.id)
-    const data = request.only(['title', 'isbn', 'author_id', 'year', 'available'])
+    const data = await request.validateUsing(updateBookValidator)
     book.merge(data)
     await book.save()
     await book.load('author')

@@ -33,4 +33,10 @@ router.group(() => {
   router.post('loans', '#controllers/loans_controller.store')
   router.put('loans/:id', '#controllers/loans_controller.update')
   router.delete('loans/:id', '#controllers/loans_controller.destroy')
+
+  // Users - solo admin può vedere tutti e eliminare
+  router.get('users', '#controllers/users_controller.index').use(middleware.admin())
+  router.get('users/:id', '#controllers/users_controller.show').use(middleware.userOrAdmin())
+  router.put('users/:id', '#controllers/users_controller.update').use(middleware.userOrAdmin())
+  router.delete('users/:id', '#controllers/users_controller.destroy').use(middleware.admin())
 }).use(middleware.auth())

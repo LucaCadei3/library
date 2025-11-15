@@ -11,7 +11,6 @@ export default class UserOrAdminMiddleware {
       return ctx.response.unauthorized({ error: 'Not authenticated' })
     }
 
-    // Admin può modificare tutti, user può modificare solo se stesso
     if (user.role !== 'admin' && user.id !== Number(userId)) {
       return ctx.response.forbidden({ 
         error: 'You can only modify your own account' 

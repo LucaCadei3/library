@@ -74,6 +74,7 @@
   <!-- Navigazione Tab -->
   <nav class="tabs">
     <button class="tab-btn active" data-tab="books">📚 Libri</button>
+    <button class="tab-btn" data-tab="profile" id="profile-tab" style="display: none;">👤 Profilo</button>
     <button class="tab-btn" data-tab="loans" id="loans-tab" style="display: none;">📖 Miei Prestiti</button>
     <button class="tab-btn" data-tab="admin" id="admin-tab" style="display: none;">⚙️ Gestione</button>
   </nav>
@@ -129,10 +130,53 @@
     </table>
   </main>
 
+  <!-- Tab Profilo -->
+  <main id="profile-tab-content" class="tab-content">
+    <h2>👤 Il Mio Profilo</h2>
+    <div class="admin-section">
+      <h3>✏️ Modifica Profilo</h3>
+      <form id="profile-form">
+        <div class="form-group">
+          <label>👤 Nome Completo</label>
+          <input type="text" id="profile-name" required>
+        </div>
+        <div class="form-group">
+          <label>📧 Email</label>
+          <input type="email" id="profile-email" required>
+        </div>
+        <div class="form-group">
+          <label>🔒 Nuova Password (lascia vuoto per non cambiare)</label>
+          <input type="password" id="profile-password" minlength="8">
+        </div>
+        <button type="submit" class="btn-primary">💾 Salva Modifiche</button>
+        <div id="profile-error" class="error-message"></div>
+        <div id="profile-success" class="success-message"></div>
+      </form>
+    </div>
+  </main>
+
   <!-- Tab Admin -->
   <main id="admin-tab-content" class="tab-content">
     <h2>⚙️ Gestione Biblioteca</h2>
     
+    <div class="admin-section">
+      <h3>👥 Gestione Utenti</h3>
+      <table id="users-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Email</th>
+            <th>Ruolo</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody id="users-body">
+          <tr><td colspan="5" class="loading">⏳ Caricamento...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <div class="admin-section">
       <h3>➕ Aggiungi Autore</h3>
       <form id="add-author-form">
@@ -189,6 +233,18 @@
         <button type="submit" class="btn-primary">Conferma Prestito</button>
         <div id="loan-error" class="error-message"></div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Conferma Generico -->
+  <div id="confirm-modal" class="modal">
+    <div class="modal-content modal-confirm">
+      <h2 id="confirm-title">⚠️ Conferma</h2>
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button id="confirm-btn" class="btn-primary">Conferma</button>
+        <button id="cancel-btn" class="btn-secondary">Annulla</button>
+      </div>
     </div>
   </div>
 

@@ -1,4 +1,3 @@
-// ✅ CONFIGURAZIONE
 const BASE_URL = 'http://localhost:3333';
 let currentPage = 1;
 let lastPage = 1;
@@ -6,7 +5,6 @@ let allBooks = [];
 let token = localStorage.getItem('token');
 let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
 
-// ✅ INIZIALIZZAZIONE
 document.addEventListener('DOMContentLoaded', () => {
   initAuth();
   fetchBooks();
@@ -14,26 +12,21 @@ document.addEventListener('DOMContentLoaded', () => {
   setTodayDate();
 });
 
-// ✅ SETUP EVENT LISTENERS
 function setupEventListeners() {
-  // Auth
   document.getElementById('show-login-btn').addEventListener('click', () => openModal('login-modal'));
   document.getElementById('show-register-btn').addEventListener('click', () => openModal('register-modal'));
   document.getElementById('logout-btn').addEventListener('click', logout);
   document.getElementById('login-form').addEventListener('submit', handleLogin);
   document.getElementById('register-form').addEventListener('submit', handleRegister);
 
-  // Modals
   document.querySelectorAll('.close').forEach(btn => {
     btn.addEventListener('click', (e) => closeModal(e.target.dataset.modal));
   });
 
-  // Filtri
   document.getElementById('filter-title').addEventListener('input', applyFilters);
   document.getElementById('filter-author').addEventListener('input', applyFilters);
   document.getElementById('reset').addEventListener('click', resetFilters);
 
-  // Paginazione
   document.getElementById('prev').addEventListener('click', () => {
     if (currentPage > 1) fetchBooks(currentPage - 1);
   });
@@ -41,30 +34,30 @@ function setupEventListeners() {
     if (currentPage < lastPage) fetchBooks(currentPage + 1);
   });
 
-  // Tab
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
   });
 
-  // Forms Admin
+  document.getElementById('profile-form').addEventListener('submit', handleProfileUpdate);
+
   if (document.getElementById('add-author-form')) {
     document.getElementById('add-author-form').addEventListener('submit', handleAddAuthor);
     document.getElementById('add-book-form').addEventListener('submit', handleAddBook);
   }
 
-  // Form Prestito
   document.getElementById('loan-form').addEventListener('submit', handleLoan);
 }
 
-// ✅ AUTH
 function initAuth() {
   if (token && currentUser) {
     showUserInfo();
+    document.getElementById('profile-tab').style.display = 'block';
     document.getElementById('loans-tab').style.display = 'block';
     
     if (currentUser.role === 'admin') {
       document.getElementById('admin-tab').style.display = 'block';
       loadAuthorsForSelect();
+      fetchUsers();
     }
   } else {
     showLoginButtons();
@@ -168,7 +161,7 @@ function logout() {
   showNotification('👋 Logout effettuato', 'info');
 }
 
-// ✅ BOOKS
+// BOOKS
 async function fetchBooks(page = 1) {
   const tbody = document.querySelector("#table-body");
   tbody.innerHTML = `<tr><td colspan="7" class="loading">⏳ Caricamento...</td></tr>`;
@@ -248,7 +241,7 @@ function resetFilters() {
   renderTable(allBooks);
 }
 
-// ✅ LOANS
+// LOANS
 async function fetchLoans() {
   if (!token) return;
 
@@ -341,32 +334,36 @@ async function handleLoan(e) {
 }
 
 async function returnBook(loanId) {
-  if (!confirm('Confermi la restituzione del libro?')) return;
+  showConfirmDialog(
+    '↩️ Restituisci Libro',
+    'Sei sicuro di voler restituire questo libro?',
+    async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/loans/${loanId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            returned: true, 
+            return_date: new Date().toISOString().split('T')[0]
+          })
+        });
 
-  try {
-    const response = await fetch(`${BASE_URL}/loans/${loanId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ 
-        returned: true, 
-        return_date: new Date().toISOString().split('T')[0]
-      })
-    });
-
-    if (response.ok) {
-      fetchLoans();
-      fetchBooks(currentPage);
-      showNotification('✅ Libro restituito!', 'success');
+        if (response.ok) {
+          fetchLoans();
+          fetchBooks(currentPage);
+          showNotification('✅ Libro restituito!', 'success');
+        }
+      } catch (error) {
+        showNotification('❌ Errore', 'error');
+      }
     }
-  } catch (error) {
-    showNotification('❌ Errore', 'error');
-  }
+  );
 }
 
-// ✅ ADMIN
+// ADMIN
 async function loadAuthorsForSelect() {
   try {
     const response = await fetch(`${BASE_URL}/authors`);
@@ -445,24 +442,204 @@ async function handleAddBook(e) {
 }
 
 async function deleteBook(bookId) {
-  if (!confirm('Sei sicuro di voler eliminare questo libro?')) return;
+  showConfirmDialog(
+    '🗑️ Elimina Libro',
+    'Sei sicuro di voler eliminare questo libro? L\'azione è irreversibile.',
+    async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/books/${bookId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          fetchBooks(currentPage);
+          showNotification('✅ Libro eliminato', 'success');
+        }
+      } catch (error) {
+        showNotification('❌ Errore', 'error');
+      }
+    }
+  );
+}
+
+// PROFILE
+function loadProfileData() {
+  if (!currentUser) return;
+  
+  document.getElementById('profile-name').value = currentUser.full_name || '';
+  document.getElementById('profile-email').value = currentUser.email || '';
+}
+
+async function handleProfileUpdate(e) {
+  e.preventDefault();
+  const fullName = document.getElementById('profile-name').value;
+  const email = document.getElementById('profile-email').value;
+  const password = document.getElementById('profile-password').value;
+  const errorDiv = document.getElementById('profile-error');
+  const successDiv = document.getElementById('profile-success');
+
+  errorDiv.textContent = '';
+  successDiv.textContent = '';
 
   try {
-    const response = await fetch(`${BASE_URL}/books/${bookId}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
+    const body = {
+      full_name: fullName,
+      email: email
+    };
+
+    if (password) {
+      body.password = password;
+    }
+
+    const response = await fetch(`${BASE_URL}/users/${currentUser.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(body)
     });
 
-    if (response.ok) {
-      fetchBooks(currentPage);
-      showNotification('✅ Libro eliminato', 'success');
+    const data = await response.json();
+
+    if (!response.ok) {
+      errorDiv.textContent = data.error || 'Errore durante l\'aggiornamento';
+      return;
     }
+
+    currentUser = data;
+    localStorage.setItem('user', JSON.stringify(currentUser));
+    document.getElementById('user-name').textContent = currentUser.full_name || currentUser.email;
+    
+    document.getElementById('profile-password').value = '';
+    successDiv.textContent = '✅ Profilo aggiornato con successo!';
+    
+    setTimeout(() => {
+      successDiv.textContent = '';
+    }, 3000);
   } catch (error) {
-    showNotification('❌ Errore', 'error');
+    errorDiv.textContent = 'Errore di connessione';
   }
 }
 
-// ✅ UTILS
+// ADMIN - USERS
+async function fetchUsers() {
+  if (!token || currentUser.role !== 'admin') return;
+
+  const tbody = document.getElementById('users-body');
+  tbody.innerHTML = '<tr><td colspan="5" class="loading">⏳ Caricamento...</td></tr>';
+
+  try {
+    const response = await fetch(`${BASE_URL}/users`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+
+    renderUsers(data.data || data);
+  } catch (error) {
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">❌ Errore caricamento</td></tr>';
+  }
+}
+
+function renderUsers(users) {
+  const tbody = document.getElementById('users-body');
+  tbody.innerHTML = '';
+
+  if (!users || users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">Nessun utente</td></tr>';
+    return;
+  }
+
+  users.forEach(user => {
+    const tr = document.createElement('tr');
+    const roleBadge = user.role === 'admin' 
+      ? '<span class="badge-danger">👑 Admin</span>'
+      : '<span class="badge-success">👤 Utente</span>';
+    
+    let actions = '';
+    
+    if (user.id !== currentUser.id) {
+      const toggleRoleBtn = user.role === 'admin'
+        ? `<button class="btn-sm btn-warning" onclick="changeUserRole(${user.id}, 'user')">⬇️ Declassa</button>`
+        : `<button class="btn-sm btn-success" onclick="changeUserRole(${user.id}, 'admin')">⬆️ Promuovi</button>`;
+      
+      actions = `${toggleRoleBtn} <button class="btn-sm btn-danger" onclick="deleteUser(${user.id})">🗑️ Elimina</button>`;
+    } else {
+      actions = '—';
+    }
+
+    tr.innerHTML = `
+      <td>${user.id}</td>
+      <td>${user.full_name}</td>
+      <td>${user.email}</td>
+      <td>${roleBadge}</td>
+      <td>${actions}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function deleteUser(userId) {
+  showConfirmDialog(
+    '🗑️ Elimina Utente',
+    'Sei sicuro di voler eliminare questo utente? L\'azione è irreversibile.',
+    async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          fetchUsers();
+          showNotification('✅ Utente eliminato', 'success');
+        } else {
+          showNotification('❌ Errore eliminazione', 'error');
+        }
+      } catch (error) {
+        showNotification('❌ Errore di connessione', 'error');
+      }
+    }
+  );
+}
+
+async function changeUserRole(userId, newRole) {
+  const title = newRole === 'admin' ? '⬆️ Promuovi Utente' : '⬇️ Declassa Admin';
+  const message = newRole === 'admin' 
+    ? 'Sei sicuro di voler promuovere questo utente a admin? Avrà accesso a tutte le funzioni di gestione.'
+    : 'Sei sicuro di voler declassare questo admin a utente normale? Perderà i privilegi di amministratore.';
+  
+  showConfirmDialog(
+    title,
+    message,
+    async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/users/${userId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ role: newRole })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          fetchUsers();
+          showNotification(newRole === 'admin' ? '✅ Utente promosso!' : '✅ Utente declassato', 'success');
+        } else {
+          showNotification(data.error || '❌ Errore', 'error');
+        }
+      } catch (error) {
+        showNotification('❌ Errore di connessione', 'error');
+      }
+    }
+  );
+}
+
+// UTILS
 function switchTab(tabName) {
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -471,6 +648,8 @@ function switchTab(tabName) {
   document.getElementById(`${tabName}-tab-content`).classList.add('active');
 
   if (tabName === 'loans') fetchLoans();
+  if (tabName === 'profile') loadProfileData();
+  if (tabName === 'admin') fetchUsers();
 }
 
 function openModal(modalId) {
@@ -487,23 +666,66 @@ function setTodayDate() {
   document.getElementById('loan-date').value = today;
 }
 
+function showConfirmDialog(title, message, onConfirm) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').textContent = message;
+  
+  const confirmBtn = document.getElementById('confirm-btn');
+  const cancelBtn = document.getElementById('cancel-btn');
+  
+  confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+  cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+  
+  document.getElementById('confirm-btn').addEventListener('click', () => {
+    closeModal('confirm-modal');
+    onConfirm();
+  });
+  
+  document.getElementById('cancel-btn').addEventListener('click', () => {
+    closeModal('confirm-modal');
+  });
+  
+  openModal('confirm-modal');
+}
+
 function showNotification(message, type = 'info') {
+  const icons = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️',
+    info: 'ℹ️'
+  };
+
   const notif = document.createElement('div');
   notif.className = `notification notification-${type}`;
-  notif.textContent = message;
+  notif.innerHTML = `
+    <span class="notification-icon">${icons[type] || '📢'}</span>
+    <span class="notification-text">${message}</span>
+    <button class="notification-close">✕</button>
+  `;
+  
   document.body.appendChild(notif);
+
+  notif.querySelector('.notification-close').addEventListener('click', () => {
+    closeNotification(notif);
+  });
 
   setTimeout(() => {
     notif.classList.add('show');
-  }, 100);
+  }, 10);
 
   setTimeout(() => {
-    notif.classList.remove('show');
-    setTimeout(() => notif.remove(), 300);
-  }, 3000);
+    closeNotification(notif);
+  }, 4000);
+
+  function closeNotification(element) {
+    element.classList.add('hide');
+    setTimeout(() => {
+      element.remove();
+    }, 300);
+  }
 }
 
-// Click fuori dal modal per chiudere
 window.onclick = (e) => {
   if (e.target.classList.contains('modal')) {
     e.target.style.display = 'none';
