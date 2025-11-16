@@ -1,16 +1,12 @@
-RELAZIONE TECNICA
+RELAZIONE
 Sistema di Gestione Biblioteca Digitale
 Corso: ICT 2023/2025
-Studenti: Edoardo Spinelli, Rodari Filippo, Luca Cadei, Nicholas Martorelli
-Data: Novembre 2024
+Edoardo Spinelli, Rodari Filippo, Luca Cadei, Nicholas Martorelli
 
 1. INTRODUZIONE
 Questa relazione descrive il progetto di sviluppo del sistema backend per la gestione di una biblioteca digitale. 
 Il sistema sviluppato permette la gestione completa del catalogo, includendo informazioni relative ai libri, agli autori, agli utenti registrati e alle operazioni di prestito. 
 Particolare attenzione è stata posta all'implementazione di un sistema di autenticazione e autorizzazione robusto, che garantisce l'accesso controllato alle diverse funzionalità in base al ruolo dell'utente.
-Per lo sviluppo del progetto sono state utilizzate tecnologie moderne e consolidate nell'ambito dello sviluppo web. 
-Il framework AdonisJS versione 6, basato su Node.js e TypeScript, è stato scelto come base per il backend, garantendo type-safety e un'architettura ben strutturata. Come database è stato utilizzato MySQL 8.0. 
-È stata inoltre sviluppata un'interfaccia web frontend utilizzando tecnologie standard (HTML, CSS, JavaScript) per dimostrare l'utilizzo pratico delle API.
 
 
 2. ARCHITETTURA DEL SISTEMA
@@ -21,7 +17,6 @@ Nel contesto di un'applicazione API-first come la nostra, i modelli rappresentan
 I controller contengono la logica di business e orchestrano le operazioni tra i diversi componenti del sistema. 
 Le view, in questo caso, sono rappresentate dall'interfaccia web presente nella cartella FE/library, che consuma le API esposte dal backend.
 Questa separazione permette di modificare l'implementazione di un layer senza impattare sugli altri. 
-Ad esempio, è possibile sostituire l'interfaccia web con un'applicazione mobile o un client desktop senza dover modificare la logica di business implementata nei controller o nei modelli.
 
 2.2 Middleware Stack
 Il flusso di elaborazione delle richieste HTTP attraversa una serie di middleware che svolgono funzioni specifiche. 
@@ -39,9 +34,8 @@ Quando un utente effettua il login con credenziali valide, il sistema genera un 
 Il client deve includere questo token nell'header Authorization di ogni richiesta successiva.
 L'hashing delle password avviene tramite l'algoritmo Scrypt, configurato con parametri di sicurezza elevati. 
 Scrypt è stato scelto in quanto particolarmente resistente agli attacchi brute-force grazie alla sua natura memory-hard. 
-La configurazione utilizzata prevede un cost factor di 16384, un block size di 8 e un parallelization factor di 1, parametri che bilanciano sicurezza e performance.
 Il sistema implementa due ruoli distinti: admin e user. 
-Gli utenti con ruolo admin hanno accesso completo a tutte le funzionalità del sistema, inclusa la gestione del catalogo. 
+Gli utenti con ruolo admin hanno accesso completo a tutte le funzionalità del sistema, inclusa la gestione del catalogo.
 Gli utenti con ruolo user possono effettuare operazioni di lettura sul catalogo e gestire i propri prestiti, ma non possono modificare libri o autori.
 
 
@@ -213,15 +207,13 @@ json
   "data": [...]
 }
 Le risposte di errore seguono una struttura consistente con un campo error che descrive il problema in linguaggio naturale. 
-Gli errori di validazione includono dettagli specifici su quali campi hanno fallito la validazione e perché. 
-Questa consistenza nel formato delle risposte facilita la gestione degli errori sul client.
+Gli errori di validazione includono dettagli specifici su quali campi hanno fallito la validazione e perché. Questa consistenza nel formato delle risposte facilita la gestione degli errori sul client.
 
 
 6. SICUREZZA
 
 6.1 Sicurezza delle Password
-La sicurezza delle password è implementata seguendo le raccomandazioni OWASP. 
-Le password non vengono mai memorizzate in chiaro ma solo in forma di hash crittografico. 
+La sicurezza delle password è implementata seguendo le raccomandazioni OWASP. Le password non vengono mai memorizzate in chiaro ma solo in forma di hash crittografico. 
 L'algoritmo utilizzato è Scrypt, scelto per la sua resistenza agli attacchi brute-force tramite hardware specializzato. 
 Scrypt è infatti un algoritmo memory-hard, che richiede una quantità significativa di memoria oltre al tempo di calcolo, rendendo economicamente non conveniente l'uso di hardware dedicato per attacchi su larga scala.
 I parametri di configurazione di Scrypt sono stati impostati per bilanciare sicurezza e performance. 
@@ -257,235 +249,3 @@ Sebbene non implementato in questa versione del progetto, un sistema di rate lim
 Il rate limiting limiterebbe il numero di richieste che un singolo client può effettuare in un determinato intervallo di tempo, prevenendo attacchi denial-of-service e tentativi di brute-force sugli endpoint di autenticazione.
 AdonisJS fornisce supporto per rate limiting attraverso moduli dedicati che possono essere facilmente integrati. 
 Una configurazione tipica potrebbe limitare gli endpoint di autenticazione a 5 tentativi per IP ogni 15 minuti, mentre gli altri endpoint potrebbero permettere 100 richieste per utente autenticato al minuto.
-
-
-7. FRONTEND
-
-7.1 Architettura Frontend
-L'interfaccia web è stata sviluppata utilizzando tecnologie standard del web (HTML5, CSS3, JavaScript ES6+) senza framework particolari. 
-Questa scelta è stata motivata dalla natura didattica del progetto e dal desiderio di mantenere l'applicazione leggera e facilmente comprensibile. 
-L'assenza di build tools e bundlers semplifica il deployment e il debugging.
-Il JavaScript utilizza la Fetch API per le chiamate HTTP alle API backend. 
-Tutte le chiamate sono gestite in modo asincrono utilizzando async/await, garantendo un'esperienza utente fluida senza blocchi dell'interfaccia. 
-Il token di autenticazione è memorizzato nel localStorage del browser e viene automaticamente incluso nell'header Authorization di ogni richiesta.
-L'architettura segue un approccio Single Page Application (SPA) dove la navigazione tra le diverse sezioni avviene senza ricaricare la pagina. 
-Questo è implementato attraverso un sistema di tab che mostrano/nascondono i diversi contenuti in base all'interazione dell'utente. 
-Questo approccio migliora notevolmente la user experience, eliminando i tempi di caricamento e mantenendo lo stato dell'applicazione.
-
-7.2 Funzionalità Implementate
-L'interfaccia si apre con una vista del catalogo pubblicamente accessibile. 
-Gli utenti possono sfogliare l'elenco dei libri, utilizzare i filtri di ricerca per titolo o autore, e navigare attraverso le pagine dei risultati. 
-Ogni libro mostra lo stato di disponibilità con indicatori visivi chiari (badge verde per disponibile, rosso per in prestito).
-Gli utenti non autenticati vedono un'interfaccia semplificata con pulsanti per login e registrazione. 
-Cliccando su questi pulsanti si aprono modal dialog che permettono l'inserimento delle credenziali. 
-Una volta autenticati, l'interfaccia si adatta mostrando il nome dell'utente, il suo ruolo, e sbloccando funzionalità aggiuntive. 
-Gli utenti normali vedono comparire la tab "Miei Prestiti" dove possono consultare lo storico dei propri prestiti e restituire i libri.
-Per gli utenti con ruolo admin, appare anche la tab "Gestione" che fornisce form per aggiungere nuovi autori e libri al catalogo. 
-Questi form includono validazione client-side che replica parzialmente quella server-side, fornendo feedback immediato all'utente prima ancora di inviare la richiesta. 
-Gli admin vedono anche pulsanti di eliminazione accanto ad ogni libro nel catalogo principale.
-La funzionalità di prestito è accessibile cliccando sul pulsante "Prendi" accanto ad un libro disponibile. 
-Si apre un modal che mostra il titolo del libro e richiede di confermare la data di prestito (pre-popolata con la data odierna). 
-Confermando, viene creato il prestito e l'interfaccia si aggiorna automaticamente riflettendo il nuovo stato del libro.
-
-7.3 User Experience
-Particolare attenzione è stata posta all'usabilità e al feedback all'utente. 
-Tutte le operazioni asincrone mostrano indicatori di caricamento, evitando che l'utente si chieda se l'applicazione sta funzionando. 
-Le operazioni completate mostrano notifiche toast temporanee nell'angolo dello schermo che confermano il successo o descrivono l'errore occorso.
-Gli errori sono gestiti con messaggi comprensibili in linguaggio naturale. 
-Ad esempio, tentando di prendere in prestito un libro non disponibile, l'utente non vede un criptico codice di errore ma un messaggio chiaro come "Questo libro non è attualmente disponibile per il prestito". 
-Gli errori di validazione mostrano esattamente quale campo ha problemi e perché.
-Il design responsive garantisce che l'interfaccia sia utilizzabile su dispositivi con schermi di diverse dimensioni. 
-Le griglie CSS si adattano dinamicamente, mostrando più colonne su schermi larghi e riducendole su dispositivi mobili. 
-I pulsanti e gli elementi interattivi hanno dimensioni appropriate per il touch input, facilitando l'uso su tablet e smartphone.
-
-7.4 Gestione dello Stato Client-Side
-Lo stato dell'applicazione client è gestito attraverso il localStorage del browser e variabili JavaScript globali. 
-Il token di autenticazione viene persistito nel localStorage, permettendo all'utente di rimanere autenticato anche dopo aver chiuso e riaperto il browser. 
-Al caricamento della pagina, l'applicazione controlla la presenza del token e, se presente, recupera automaticamente i dati dell'utente dal backend.
-Questa persistenza dello stato migliora significativamente l'esperienza utente, evitando di richiedere login ripetuti. 
-Tuttavia, per motivi di sicurezza, in un'applicazione di produzione sarebbe opportuno implementare una scadenza dei token e richiedere periodicamente la riautenticazione, specialmente per operazioni sensibili.
-
-
-8. TESTING E SVILUPPO
-
-8.1 Ambiente di Sviluppo
-L'ambiente di sviluppo è stato configurato per massimizzare la produttività del team. 
-Node.js versione 20 LTS è stato scelto come runtime per garantire stabilità e supporto a lungo termine. 
-Il package manager npm è stato utilizzato per la gestione delle dipendenze, con un file package-lock.json versionato per garantire build riproducibili.
-Il file .env contiene tutte le configurazioni sensibili e specifiche dell'ambiente (credenziali database, secret keys, porte di ascolto). 
-Questo file non è versionato su Git per sicurezza, e viene fornito un file .env.example come template che i membri del team possono copiare e personalizzare con le proprie configurazioni locali.
-TypeScript è configurato con regole strict che catturano molti errori comuni a compile-time. 
-L'integrazione con Visual Studio Code fornisce autocompletamento intelligente, refactoring automatico e visualizzazione degli errori in tempo reale, accelerando significativamente il processo di sviluppo.
-
-8.2 Database di Sviluppo
-Per lo sviluppo locale, ogni membro del team utilizza un'istanza MySQL locale configurata secondo le specifiche del progetto. 
-Le migrazioni database garantiscono che tutti i membri abbiano lo stesso schema, eliminando il classico problema "funziona sul mio computer". 
-Le migrazioni sono file TypeScript versionati che descrivono le modifiche allo schema in modo programmatico.
-Il workflow tipico prevede l'esecuzione del comando node ace migration:run per applicare tutte le migrazioni pendenti, seguito da node ace db:seed per popolare il database con dati di test. 
-Questo permette di avere un ambiente di sviluppo funzionante in pochi secondi, facilitando l'onboarding di nuovi membri del team.
-Un aspetto importante è la possibilità di fare rollback delle migrazioni tramite node ace migration:rollback. 
-Questo è essenziale quando si lavora su modifiche allo schema: si può testare una migrazione, fare rollback se ci sono problemi, modificare il codice e riapplicarla. 
-Questo ciclo iterativo è fondamentale per lo sviluppo di modifiche complesse allo schema.
-
-8.3 Strategia di Testing
-Sebbene test automatizzati formali non siano stati implementati in questa versione del progetto a causa dei vincoli temporali, è stata definita una strategia di testing manuale sistematica. 
-Per ogni endpoint API è stato preparato un documento che descrive gli scenari di test da verificare: input validi, input invalidi, test dei vincoli di autorizzazione, test dei casi limite.
-Strumenti come Postman o Thunder Client (estensione di VS Code) sono stati utilizzati per testare manualmente le API durante lo sviluppo. 
-Le collection di request sono state condivise tra i membri del team, garantendo che tutti potessero facilmente verificare il funzionamento degli endpoint a cui stavano lavorando.
-Il frontend è stato testato manualmente utilizzando diversi browser (Chrome, Firefox, Safari) e dispositivi per verificare la compatibilità e il comportamento responsive. 
-Sono stati identificati e risolti diversi bug legati alla gestione dello stato e alla sincronizzazione con il backend.
-
-8.4 Gestione delle Versioni
-Il progetto utilizza Git per il version control, con repository ospitato su GitHub/GitLab. 
-La strategia di branching segue un modello semplificato: un branch main contenente il codice stabile e funzionante, e feature branch per lo sviluppo di nuove funzionalità. 
-Una volta completata e testata una feature, viene effettuato un merge sul main tramite pull request.
-Le pull request servono anche come punto di code review, dove altri membri del team possono esaminare le modifiche, suggerire miglioramenti e identificare potenziali problemi prima che il codice venga integrato. 
-Questo processo peer review ha portato a miglioramenti significativi nella qualità del codice e ha facilitato la condivisione di conoscenza tra i membri del team.
-I commit message seguono le convenzioni conventional commits, con prefissi che indicano il tipo di modifica (feat:, fix:, docs:, refactor:). 
-Questo rende molto più semplice leggere la storia del progetto e generare automaticamente changelog dettagliati.
-
-
-9. POSSIBILI SVILUPPI FUTURI
-
-9.1 Funzionalità Aggiuntive
-Il sistema attuale implementa le funzionalità core di una biblioteca digitale, ma molte feature aggiuntive potrebbero migliorare significativamente l'esperienza utente. 
-Un sistema di ricerca avanzata con filtri multipli (genere, anno di pubblicazione, disponibilità) e ordinamento personalizzabile renderebbe più semplice trovare libri specifici in cataloghi grandi.
-Un sistema di recensioni e valutazioni permetterebbe agli utenti di condividere opinioni sui libri e scoprire nuove letture basate sulle preferenze della community. 
-Questo richiederebbe nuove tabelle (reviews, ratings) e logica per calcolare e visualizzare rating aggregati.
-Funzionalità di prenotazione permetterebbero agli utenti di mettersi in lista d'attesa per libri attualmente in prestito. 
-Quando il libro viene restituito, il primo utente in lista riceverebbe una notifica automatica. 
-Questo richiederebbe un sistema di code e notifiche (email o push).
-Un sistema di raccomandazioni personalizzate potrebbe analizzare lo storico dei prestiti e suggerire libri simili o dello stesso autore. 
-Algoritmi di collaborative filtering potrebbero identificare utenti con gusti simili e raccomandare i loro libri preferiti.
-
-9.2 Miglioramenti Tecnici
-L'implementazione di test automatizzati completi (unit test, integration test, end-to-end test) garantirebbe maggiore affidabilità e faciliterebbe il refactoring. 
-Framework come Jest per unit testing e Playwright per E2E testing potrebbero essere integrati nel workflow di continuous integration.
-L'introduzione di GraphQL come alternativa o complemento alle API REST potrebbe migliorare l'efficienza, permettendo ai client di richiedere esattamente i dati necessari in una singola query. 
-Questo è particolarmente vantaggioso per applicazioni mobile dove la bandwidth è limitata.
-L'implementazione di full-text search utilizzando Elasticsearch permetterebbe ricerche molto più sofisticate e performanti su cataloghi grandi. 
-Elasticsearch supporta fuzzy matching, sinonimi, relevance scoring e query complesse che vanno oltre le capability di LIKE in SQL.
-Un sistema di caching multi-layer (Redis per session data e query results, CDN per static assets) migliorerebbe drasticamente le performance e ridurrebbe il carico sui server backend. 
-Cache invalidation strategies dovrebbero essere attentamente progettate per garantire consistenza.
-
-9.3 Integrazione con Sistemi Esterni
-L'integrazione con API esterne di biblioteche pubbliche o database bibliografici come Google Books API permetterebbe di arricchire automaticamente i dati dei libri con copertine, descrizioni dettagliate, recensioni professional e informazioni biografiche sugli autori.
-Un sistema di autenticazione federata (OAuth2 con Google, Facebook, GitHub) semplificherebbe la registrazione e il login, riducendo friction per i nuovi utenti. 
-Single Sign-On (SSO) potrebbe essere implementato per ambienti enterprise.
-Integrazione con sistemi di pagamento (Stripe, PayPal) permetterebbe l'implementazione di funzionalità a pagamento come l'estensione dei periodi di prestito, l'acquisto di copie digitali o membership premium con benefici esclusivi.
-Webhook e API pubbliche permetterebbero a sistemi terzi di integrarsi con la biblioteca, ad esempio dashboard amministrative personalizzate, applicazioni mobile native o integrazioni con sistemi di gestione scolastica.
-
-9.4 Accessibilità e Internazionalizzazione
-Il supporto multi-lingua (i18n) renderebbe l'applicazione utilizzabile a livello internazionale. 
-Questo richiederebbe l'estrazione di tutte le stringhe user-facing in file di traduzione e l'implementazione di un sistema di locale switching.
-Miglioramenti all'accessibilità (WCAG 2.1 compliance) garantirebbero che l'applicazione sia utilizzabile da persone con disabilità. 
-Screen reader support, keyboard navigation completa, contrasti appropriati e alternative testuali per contenuti multimediali sono essenziali.
-Un'applicazione mobile native (iOS/Android) o progressive web app (PWA) fornirebbe un'esperienza ottimizzata per dispositivi mobili, con funzionalità offline, notifiche push native e integrazione con le feature specifiche della piattaforma.
-Un sistema di analitycs integrato raccoglierebbe dati sull'utilizzo dell'applicazione, permettendo di identificare pattern, feature più utilizzate e aree di miglioramento. 
-Questi insight guiderebbero lo sviluppo futuro basato su dati reali invece che assunzioni.
-
-
-10. CONCLUSIONI
-
-10.1 Obiettivi Raggiunti
-Il progetto ha raggiunto pienamente gli obiettivi prefissati, realizzando un sistema completo per la gestione di una biblioteca digitale. 
-Il backend API-first fornisce tutte le funzionalità necessarie per gestire catalogo, utenti e prestiti, con un robusto sistema di autenticazione e autorizzazione basato su ruoli.
-L'architettura implementata segue best practice consolidate nell'industria, utilizzando pattern come MVC, middleware composition e ORM per data access. 
-Il codice è ben strutturato, type-safe grazie a TypeScript, e facilmente estendibile per future evoluzioni.
-Il frontend web dimostra l'utilizzo pratico delle API, fornendo un'interfaccia intuitiva e responsive che copre tutti i casi d'uso principali. 
-La separazione netta tra frontend e backend permette facilmente di sviluppare client alternativi (mobile, desktop) che riutilizzano la stessa logica di business.
-
-10.2 Competenze Acquisite
-Lo sviluppo del progetto ha permesso al team di acquisire competenze pratiche su molti aspetti dello sviluppo web moderno. 
-L'utilizzo di AdonisJS ha fornito esperienza su un framework full-featured per Node.js, alternativo ai più comuni Express o NestJS, con convenzioni opinionated che accelerano lo sviluppo.
-L'implementazione del sistema di autenticazione e autorizzazione ha approfondito la comprensione di tematiche di sicurezza fondamentali: hashing delle password, token-based authentication, RBAC (Role-Based Access Control), protezione contro vulnerabilità comuni.
-Il lavoro con database relazionali, ORM, migrazioni e seeder ha rafforzato le competenze di database design e data modeling. 
-L'esperienza con Git e il workflow collaborativo ha migliorato le capacità di lavorare in team su progetti software complessi.
-
-10.3 Sfide Affrontate
-Durante lo sviluppo sono state affrontate diverse sfide tecniche. 
-La gestione corretta del ciclo di vita dei prestiti, garantendo che i libri non possano essere prestati due volte contemporaneamente, ha richiesto attenzione particolare alla consistenza dei dati e alle race condition.
-L'implementazione dei middleware di autorizzazione ha presentato complessità nell'equilibrare sicurezza e usabilità. 
-Il middleware userOrAdmin, che permette agli utenti di modificare solo i propri dati ma agli admin di modificare tutto, rappresenta un pattern utile che bilancia questi requisiti contrastanti.
-La configurazione di CORS per permettere la comunicazione cross-origin tra frontend e backend ha richiesto comprensione approfondita dei security model dei browser. 
-Il bilanciamento tra sicurezza (restringere le origini permesse) e praticità (permettere sviluppo locale) ha richiesto configurazioni diverse per development e production.
-
-10.4 Lezioni Apprese
-L'esperienza del progetto ha evidenziato l'importanza di una pianificazione iniziale solida. 
-Il tempo investito nella progettazione dello schema database e nell'architettura delle API ha ripagato ampiamente, evitando costosi refactoring successivi.
-La consistenza nelle convenzioni è fondamentale in progetti collaborativi. 
-Avere agreement su code style, commit message format, naming conventions e struttura delle directory ha significativamente ridotto friction e migliorato la leggibilità del codice.
-L'importanza del testing è emersa chiaramente. 
-Sebbene i vincoli temporali abbiano limitato l'implementazione di test automatizzati, i bug che sono emersi in fase di testing manuale avrebbero potuto essere catturati molto prima con una test suite adeguata. 
-Nei progetti futuri, il testing dovrebbe essere prioritario fin dall'inizio.La documentazione continua è essenziale. 
-Scrivere questa relazione tecnica mentre il progetto era in corso ha aiutato a chiarire decisioni architetturali e a mantenere allineato il team sugli obiettivi e sulle implementazioni.
-
-biblioteca-digitale/
-├── app/
-│   ├── controllers/     # Controller HTTP
-│   ├── middleware/      # Middleware personalizzati
-│   ├── models/          # Modelli Lucid ORM
-│   └── validators/      # Validator VineJS
-├── config/              # File di configurazione
-├── database/
-│   ├── migrations/      # Migrazioni database
-│   ├── seeders/         # Seeder per dati iniziali
-│   └── factories/       # Factory per test data
-├── start/
-│   ├── routes.ts        # Definizione routes
-│   └── kernel.ts        # Configurazione middleware
-├── FE/
-│   └── library/         # Frontend web
-│       ├── index.html
-│       ├── style.css
-│       └── app.js
-├── .env                 # Variabili d'ambiente
-├── package.json         # Dipendenze npm
-└── tsconfig.json        # Configurazione TypeScript
-
-bash
-# Installazione dipendenze
-npm install
-
-# Esecuzione migrazioni
-node ace migration:run
-
-# Rollback migrazioni
-node ace migration:rollback
-
-# Esecuzione seeder
-node ace db:seed
-
-# Creazione admin
-node ace create:admin
-
-# Avvio server sviluppo
-npm run dev
-
-# Build per produzione
-npm run build
-
-# Avvio produzione
-npm start
-Appendice D: Variabili d'Ambiente
-env
-# Server
-PORT=3333
-HOST=0.0.0.0
-NODE_ENV=development
-
-# Database
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=password
-DB_DATABASE=biblioteca
-
-# Applicazione
-APP_KEY=your_app_key_here
-SESSION_DRIVER=cookie
-
-Fine della Relazione Tecnica
-Documento redatto da: Edoardo Spinelli, Rodari Filippo, Luca Cadei, Nicholas Martorelli
-Corso: ICT 2023/2025
-Data: Novembre 2024
