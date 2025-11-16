@@ -13,10 +13,9 @@ Particolare attenzione è stata posta all'implementazione di un sistema di auten
 
 2.1 Pattern Architetturale
 L'architettura del sistema segue il pattern Model-View-Controller (MVC), che garantisce una chiara separazione delle responsabilità e facilita la manutenibilità del codice. 
-Nel contesto di un'applicazione API-first come la nostra, i modelli rappresentano le entità del dominio (User, Author, Book, Loan) e gestiscono la logica di accesso ai dati. 
+Nel contesto di un'applicazione API-first come questa, i modelli rappresentano le entità del dominio (User, Author, Book, Loan) e gestiscono la logica di accesso ai dati. 
 I controller contengono la logica di business e orchestrano le operazioni tra i diversi componenti del sistema. 
 Le view, in questo caso, sono rappresentate dall'interfaccia web presente nella cartella FE/library, che consuma le API esposte dal backend.
-Questa separazione permette di modificare l'implementazione di un layer senza impattare sugli altri. 
 
 2.2 Middleware Stack
 Il flusso di elaborazione delle richieste HTTP attraversa una serie di middleware che svolgono funzioni specifiche. 
@@ -32,8 +31,7 @@ Il sistema di autenticazione implementato è di tipo token-based, seguendo lo st
 Questa scelta è stata dettata dalla natura stateless delle API REST e dalla necessità di garantire scalabilità orizzontale del sistema. 
 Quando un utente effettua il login con credenziali valide, il sistema genera un token univoco che viene memorizzato nel database nella tabella auth_access_tokens. 
 Il client deve includere questo token nell'header Authorization di ogni richiesta successiva.
-L'hashing delle password avviene tramite l'algoritmo Scrypt, configurato con parametri di sicurezza elevati. 
-Scrypt è stato scelto in quanto particolarmente resistente agli attacchi brute-force grazie alla sua natura memory-hard. 
+L'hashing delle password avviene tramite l'algoritmo Scrypt. Scrypt è stato scelto in quanto particolarmente resistente agli attacchi brute-force grazie alla sua natura memory-hard. 
 Il sistema implementa due ruoli distinti: admin e user. 
 Gli utenti con ruolo admin hanno accesso completo a tutte le funzionalità del sistema, inclusa la gestione del catalogo.
 Gli utenti con ruolo user possono effettuare operazioni di lettura sul catalogo e gestire i propri prestiti, ma non possono modificare libri o autori.
@@ -50,7 +48,6 @@ Oltre all'identificativo univoco e al nome dell'autore, è presente un campo bio
 La tabella books rappresenta il catalogo della biblioteca e include titolo, codice ISBN (con constraint di unicità), riferimento all'autore, anno di pubblicazione e un flag booleano che indica la disponibilità del libro per il prestito.
 Infine, la tabella loans gestisce le operazioni di prestito. 
 Ogni record rappresenta un prestito e contiene il riferimento all'utente che ha richiesto il prestito, il libro prestato, la data di prestito, la data di restituzione effettiva e un flag booleano che indica se il libro è stato restituito. 
-Le date sono memorizzate utilizzando il tipo DATE di MySQL, garantendo precisione e facilitando le query temporali.
 
 3.2 Relazioni tra Entità
 Le relazioni tra le entità sono state progettate seguendo le best practice della normalizzazione database. 
